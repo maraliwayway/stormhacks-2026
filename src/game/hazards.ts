@@ -1,64 +1,124 @@
-import { FLIGHT } from './flight';
+import { FLIGHT } from "./flight";
 
-export interface Box { x: number; y: number; width: number; height: number }
-export interface Hazard extends Box { id: number; kind: 'pot' | 'knife' | 'pin'; passed: boolean }
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+export interface Hazard extends Box {
+  id: number;
+  kind: "pot" | "knife" | "pin";
+  passed: boolean;
+}
+export const COLLISION_SCALE = 0.8;
 export const BIRD_BOX = { width: 96, height: 72 };
 
 /** Visual boxes shrink to 80% on each axis. Never scale collisions with bird VFX. */
-export function overlaps(a: Box, b: Box, scale = 0.8): boolean {
-  return Math.abs(a.x - b.x) < (a.width + b.width) * scale / 2
-    && Math.abs(a.y - b.y) < (a.height + b.height) * scale / 2;
+export function overlaps(a: Box, b: Box, scale = COLLISION_SCALE): boolean {
+  return (
+    Math.abs(a.x - b.x) < ((a.width + b.width) * scale) / 2 &&
+    Math.abs(a.y - b.y) < ((a.height + b.height) * scale) / 2
+  );
 }
 
+/** Mulberry32: repeatable unsigned 32-bit mixing; arithmetic order is intentional. */
 export function seededRandom(seed: number): () => number {
   return () => {
     seed |= 0;
-    seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let mixed = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed)) ^ mixed;
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
   };
 }
 
-const PATTERNS = [[0], [2], [1]];
-export const HAZARD_ROW_SPACING = 620;
-const CAT_CLEAR_AHEAD = 700;
-const CAT_CLEAR_BEHIND = 240;
-const KINDS = ['pot', 'knife', 'pin'] as const;
+const LANE_ORDER = [0, 2, 1];
+const MAX_HAZARD_HEIGHT = 62;
+const NEAR_MISS_DISTANCE = 45;
+export const HAZARD_ROW_SPACING = 900;
+export const HAZARD_REACTION_SECONDS = 2.5;
+export const HAZARD_MIN_LEAD = FLIGHT.maxRise * HAZARD_REACTION_SECONDS;
+const KINDS = ["pot", "knife", "pin"] as const;
+
+export interface HazardAdvanceOptions {
+  /** Bird centre in world pixels; defaults to the middle of the viewport. */
+  birdY?: number;
+  /** Consume rows without spawning while a cat or Heaven reserves the map. */
+  suppressObstacles?: boolean;
+}
 
 export class HazardField {
   items: Hazard[] = [];
   private random: () => number;
-  private nextY = -100;
-  private id = 0;
+  private nextRowY = -100;
+  private nextId = 0;
 
-  constructor(seed = 2026) { this.random = seededRandom(seed); }
+  constructor(seed = 2026) {
+    this.random = seededRandom(seed);
+  }
 
-  advance(cameraY: number, catBirdY?: number): void {
-    while (this.nextY > cameraY - 500) {
-      const pattern = PATTERNS[Math.floor(this.random() * PATTERNS.length)];
-      for (const lane of pattern) {
-        const kind = KINDS[Math.floor(this.random() * KINDS.length)];
-        this.items.push({
-          id: this.id++, kind, x: FLIGHT.lanes[lane], y: this.nextY,
-          width: kind === 'pin' ? 150 : 96, height: kind === 'knife' ? 36 : 62,
-          passed: false,
-        });
-      }
-      this.nextY -= HAZARD_ROW_SPACING;
+  advance(cameraY: number, options: HazardAdvanceOptions = {}): void {
+    const { birdY = cameraY + FLIGHT.height / 2, suppressObstacles = false } =
+      options;
+    if (suppressObstacles) {
+      this.items = [];
+    } else {
+      this.items = this.items
+        .filter(
+          (hazard) => hazard.y - hazard.height / 2 < cameraY + FLIGHT.height,
+        )
+        .slice(0, 1);
     }
-    this.items = this.items.filter(item => item.y < cameraY + FLIGHT.height + 180
-      && (catBirdY === undefined || item.y < catBirdY - CAT_CLEAR_AHEAD || item.y > catBirdY + CAT_CLEAR_BEHIND));
+
+    // Look past the reaction gap to find a safe row even after a camera jump.
+    const highestSafeEdge = birdY - BIRD_BOX.height / 2 - HAZARD_MIN_LEAD;
+    const horizon =
+      highestSafeEdge - HAZARD_ROW_SPACING - MAX_HAZARD_HEIGHT / 2;
+    while (
+      this.nextRowY > horizon ||
+      (!suppressObstacles && this.items.length === 0)
+    ) {
+      const hazard = this.createNextHazard();
+      const hasSafeLead = hazard.y + hazard.height / 2 <= highestSafeEdge;
+      if (!suppressObstacles && this.items.length === 0 && hasSafeLead) {
+        this.items.push(hazard);
+      }
+      // Skipped rows still consume their seed and ID; they never reappear later.
+      this.nextRowY -= HAZARD_ROW_SPACING;
+    }
+  }
+
+  private createNextHazard(): Hazard {
+    const lane = LANE_ORDER[Math.floor(this.random() * LANE_ORDER.length)];
+    const kind = KINDS[Math.floor(this.random() * KINDS.length)];
+    return {
+      id: this.nextId++,
+      kind,
+      x: FLIGHT.lanes[lane],
+      y: this.nextRowY,
+      width: kind === "pin" ? 150 : 96,
+      height: kind === "knife" ? 36 : MAX_HAZARD_HEIGHT,
+      passed: false,
+    };
   }
 
   check(bird: Box): { hit: Hazard | undefined; misses: Hazard[] } {
-    const hit = this.items.find(h => overlaps(bird, h));
+    const hit = this.items.find((hazard) => overlaps(bird, hazard));
     const misses: Hazard[] = [];
     for (const hazard of this.items) {
-      if (!hazard.passed && bird.y < hazard.y - (hazard.height + bird.height) * 0.4) {
+      if (
+        !hazard.passed &&
+        bird.y <
+          hazard.y - (hazard.height + bird.height) * (COLLISION_SCALE / 2)
+      ) {
         hazard.passed = true;
-        const clearance = Math.abs(bird.x - hazard.x) - (bird.width + hazard.width) * 0.4;
-        if (clearance >= 0 && clearance < 45) misses.push(hazard);
+        const clearance =
+          Math.abs(bird.x - hazard.x) -
+          (bird.width + hazard.width) * (COLLISION_SCALE / 2);
+        if (clearance >= 0 && clearance < NEAR_MISS_DISTANCE) {
+          misses.push(hazard);
+        }
       }
     }
     return { hit, misses };

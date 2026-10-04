@@ -1,10 +1,12 @@
-import { expect, it } from 'vitest';
-import { WormField } from './worms';
-import type { Hazard } from './hazards';
+import { expect, it } from "vitest";
+import type { Hazard } from "./hazards";
+import { WormField } from "./worms";
 
-it('spawns near hazards once and credits a pickup only once', () => {
+it("spawns near hazards once and credits a pickup only once", () => {
   const field = new WormField();
-  const hazards: Hazard[] = [{ id: 0, kind: 'pot', x: 340, y: 0, width: 96, height: 62, passed: false }];
+  const hazards: Hazard[] = [
+    { id: 0, kind: "pot", x: 340, y: 0, width: 96, height: 62, passed: false },
+  ];
   field.advance(hazards, 0);
   field.advance(hazards, 0);
   expect(field.items).toHaveLength(1);

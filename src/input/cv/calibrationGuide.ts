@@ -1,4 +1,4 @@
-import type { CalibrationStatus } from './calibration';
+import type { CalibrationStatus } from "./calibration";
 
 /**
  * "Stand in the box" guide: a silhouette box that turns green when the full body is in
@@ -12,58 +12,79 @@ export function createCalibrationGuide(
   width = 640,
   height = 480,
 ) {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  canvas.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;';
+  canvas.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;";
   host.appendChild(canvas);
-  const ctx = canvas.getContext('2d')!;
-  let raf = 0;
+  const context = canvas.getContext("2d")!;
+  let animationFrameId = 0;
 
   const draw = () => {
-    raf = requestAnimationFrame(draw);
-    ctx.clearRect(0, 0, width, height);
-    const st = getStatus();
-    if (!st || st.phase === 'idle' || st.phase === 'done') return;
+    animationFrameId = requestAnimationFrame(draw);
+    context.clearRect(0, 0, width, height);
+    const status = getStatus();
+    if (!status || status.phase === "idle" || status.phase === "done") {
+      return;
+    }
 
-    const color = st.bodyInFrame ? '#00e676' : '#ff5252';
-    const bw = width * 0.45;
-    const bh = height * 0.92;
-    const x = (width - bw) / 2;
-    const y = (height - bh) / 2;
+    const color = status.bodyInFrame ? "#00e676" : "#ff5252";
+    const boxWidth = width * 0.45;
+    const boxHeight = height * 0.92;
+    const x = (width - boxWidth) / 2;
+    const y = (height - boxHeight) / 2;
 
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = color;
-    ctx.setLineDash([14, 10]);
-    ctx.strokeRect(x, y, bw, bh);
-    ctx.setLineDash([]);
+    context.lineWidth = 4;
+    context.strokeStyle = color;
+    context.setLineDash([14, 10]);
+    context.strokeRect(x, y, boxWidth, boxHeight);
+    context.setLineDash([]);
 
     // simple head + body silhouette hint
-    ctx.globalAlpha = 0.25;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(width / 2, y + bh * 0.12, bh * 0.06, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillRect(width / 2 - bw * 0.3, y + bh * 0.2, bw * 0.6, bh * 0.45);
-    ctx.globalAlpha = 1;
+    context.globalAlpha = 0.25;
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(
+      width / 2,
+      y + boxHeight * 0.12,
+      boxHeight * 0.06,
+      0,
+      Math.PI * 2,
+    );
+    context.fill();
+    context.fillRect(
+      width / 2 - boxWidth * 0.3,
+      y + boxHeight * 0.2,
+      boxWidth * 0.6,
+      boxHeight * 0.45,
+    );
+    context.globalAlpha = 1;
 
-    ctx.font = 'bold 22px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 4;
-    const msg = st.phase === 'capturing' ? 'Hold still...' : getPrompt() ?? 'Stand in the box';
-    ctx.strokeText(msg, width / 2, height - 36);
-    ctx.fillText(msg, width / 2, height - 36);
+    context.font = "bold 22px sans-serif";
+    context.textAlign = "center";
+    context.fillStyle = "#fff";
+    context.strokeStyle = "#000";
+    context.lineWidth = 4;
+    const message =
+      status.phase === "capturing"
+        ? "Hold still..."
+        : (getPrompt() ?? "Stand in the box");
+    context.strokeText(message, width / 2, height - 36);
+    context.fillText(message, width / 2, height - 36);
 
-    if (st.phase === 'capturing') {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(x, height - 24, bw, 10);
-      ctx.fillStyle = color;
-      ctx.fillRect(x, height - 24, bw * st.progress, 10);
+    if (status.phase === "capturing") {
+      context.fillStyle = "rgba(0,0,0,0.5)";
+      context.fillRect(x, height - 24, boxWidth, 10);
+      context.fillStyle = color;
+      context.fillRect(x, height - 24, boxWidth * status.progress, 10);
     }
   };
-  raf = requestAnimationFrame(draw);
+  animationFrameId = requestAnimationFrame(draw);
 
-  return { destroy() { cancelAnimationFrame(raf); canvas.remove(); } };
+  return {
+    destroy() {
+      cancelAnimationFrame(animationFrameId);
+      canvas.remove();
+    },
+  };
 }
