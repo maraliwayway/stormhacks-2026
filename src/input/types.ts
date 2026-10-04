@@ -41,6 +41,10 @@ export interface InputState {
   
     /** True once calibration baseline is captured. Keyboard source: always true. */
     calibrated: boolean;
+    /** Optional menu confirmation. Older gesture producers remain compatible. */
+    select?: boolean;
+    /** Optional monotonic confirmations, so short key presses survive a render frame. */
+    selectCount?: number;
   }
   
   export interface InputSource {

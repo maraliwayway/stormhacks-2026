@@ -1,6 +1,11 @@
 import Phaser from 'phaser';
 import { BootScene } from './game/scenes/BootScene';
 import './style.css';
+import { keyboard } from './input/defaultInput';
+import { inputManager } from './input/inputManager';
+
+void keyboard.start();
+inputManager.setSource(keyboard);
 
 export const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -16,5 +21,5 @@ export const game = new Phaser.Game({
 });
 
 if (import.meta.hot) {
-  import.meta.hot.dispose(() => game.destroy(true));
+  import.meta.hot.dispose(() => { keyboard.stop(); game.destroy(true); });
 }

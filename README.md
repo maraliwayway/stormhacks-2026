@@ -15,6 +15,7 @@ Open the local URL printed by Vite. The game uses a 1280 by 720 canvas that fits
 
 ```sh
 npm run typecheck
+npm test
 npm run build
 npm run preview
 ```
@@ -22,6 +23,8 @@ npm run preview
 ## Team integration
 
 `src/input/types.ts` defines the shared `InputState` and `InputSource` contract. Input producers register with `inputManager.setSource(source)`. Gameplay reads `inputManager.getState()` every frame without waiting on the camera or network.
+
+Keyboard fallback starts by default. Space records one flap per press, arrows provide strafe/jump/squat, and Enter confirms menus. The keyboard badge hides when a CV producer replaces the source. CV menu confirmation can use a new flap count or the optional `select` field. Holding Space does not generate repeated flaps.
 
 | Folder | Owner / purpose |
 | --- | --- |
