@@ -28,6 +28,27 @@ export function ensureCloudArt(scene: Phaser.Scene): string {
   return CLOUD_KEY;
 }
 
+/** Two big, faint pigeons behind the clouds give the title sky some character. */
+export function addBackdropPigeons(scene: Phaser.Scene): void {
+  if (scene.textures.exists("pigeon-rest")) {
+    scene.add
+      .image(-40, 760, "pigeon-rest")
+      .setOrigin(0, 1)
+      .setDisplaySize(560, 547)
+      .setFlipX(true)
+      .setAlpha(0.22)
+      .setDepth(-18);
+  }
+  if (scene.textures.exists("pigeon-hero")) {
+    scene.add
+      .image(1330, 790, "pigeon-hero")
+      .setOrigin(1, 1)
+      .setDisplaySize(590, 699)
+      .setAlpha(0.22)
+      .setDepth(-18);
+  }
+}
+
 interface Cloud {
   image: Phaser.GameObjects.Image;
   speed: number;

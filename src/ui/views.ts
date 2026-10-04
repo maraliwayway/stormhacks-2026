@@ -17,7 +17,7 @@ function soundButton(): string {
 }
 
 function tip(
-  figure: "flap" | "head" | "dodge",
+  figure: Parameters<typeof movementFigure>[0],
   title: string,
   body: string,
 ): string {
@@ -28,8 +28,8 @@ export function menuView(best: number): string {
   return `<section class="screen title-screen" aria-labelledby="title-heading">
     <header class="title-bar">
       <div class="brand">
-        <h1 id="title-heading" class="logo" tabindex="-1"><img src="${ART}pigeon-flight-3.webp" alt="" />flap or flop</h1>
-        <p class="tagline">Dodge obstacles and stay out of cat lanes.</p>
+        <h1 id="title-heading" class="logo" tabindex="-1"><img src="${ART}pigeon-flight-3.webp" alt="" />Flap or Flop</h1>
+        <p class="tagline">Be a flapper, not a flop</p>
       </div>
       <div class="corner">
         <div class="corner-buttons">${soundButton()}<button class="round-button" data-action="fullscreen" aria-label="Enter fullscreen">${icon("expand")}</button></div>
@@ -38,16 +38,23 @@ export function menuView(best: number): string {
     </header>
     <div class="mirror">
       ${cameraSlot("large")}
+    </div>
+    <div class="mirror-actions">
       <p class="mirror-status" data-menu-status role="status">Looking for your camera…</p>
       <button class="button button-go" data-action="advance" disabled>${icon("palms")}<span>Palms together to fly</span></button>
       <p class="asset-status" data-asset-status role="status" hidden></p>
     </div>
+<div class="rules">
     <ul class="tips" aria-label="How to play">
       ${tip("flap", "Flap your arms", "to fly up")}
+      ${tip("fast", "Flap harder", "to fly up faster")}
       ${tip("head", "Lean your head", "to switch lanes")}
       ${tip("dodge", "Cat face?", "leave its lane")}
     </ul>
+      <button class="button warmup-button" data-action="warmup">Warm up first</button>
+    </div>
     <p class="best-score">${best > 0 ? `best <b>${Math.floor(best)} m</b>` : ""}</p>
+    <div class="dialog-layer" data-dialog-layer></div>
   </section>`;
 }
 
@@ -71,6 +78,39 @@ export function playView(): string {
     </div>
     <div class="dialog-layer" data-dialog-layer></div>
   </section>`;
+}
+
+const WARMUP_LINKS = [
+  [
+    "https://www.nhs.uk/live-well/exercise/how-to-warm-up-before-exercising/",
+    "How to warm up (NHS, with videos)",
+  ],
+  [
+    "https://www.nhs.uk/live-well/exercise/flexibility-exercises/",
+    "Neck and shoulder stretches (NHS)",
+  ],
+  [
+    "https://www.youtube.com/results?search_query=shoulder+and+arm+warm+up+stretches",
+    "More shoulder and arm warm-up videos (YouTube)",
+  ],
+] as const;
+
+/** A one-minute routine for the muscles the game uses, plus trusted guides. */
+export function warmupView(): string {
+  return `<div class="dialog-backdrop"><section class="card dialog warmup" role="dialog" aria-modal="true" aria-labelledby="warmup-heading">
+    <h2 id="warmup-heading" tabindex="-1">warm up</h2>
+    <p>A minute of this keeps your shoulders happy.</p>
+    <ol class="routine">
+      <li>Roll your shoulders back 10 times</li>
+      <li>Circle your arms, 10 forwards and 10 back</li>
+      <li>Turn your head slowly, 5 times each side</li>
+      <li>Shake out your arms</li>
+    </ol>
+    <p class="safety">Clear some space around you, and stop if anything hurts.</p>
+    <ul class="links">${WARMUP_LINKS.map(([href, label]) => `<li><a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a></li>`).join("")}</ul>
+    <p class="dialog-hint">${icon("palms")} Palms together when you’re ready</p>
+    <button class="button button-go" data-action="warmup-done">I’m warmed up</button>
+  </section></div>`;
 }
 
 export function pauseView(): string {

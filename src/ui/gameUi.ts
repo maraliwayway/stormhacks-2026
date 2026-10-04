@@ -7,6 +7,7 @@ import {
   pauseView,
   playView,
   resultView,
+  warmupView,
 } from "./views";
 
 export type UiAction =
@@ -18,9 +19,11 @@ export type UiAction =
   | "camera"
   | "fullscreen"
   | "recalibrate"
-  | "sound";
+  | "sound"
+  | "warmup"
+  | "warmup-done";
 export type CameraStatus = "idle" | "loading" | "ready" | "error";
-type View = "menu" | "playing" | "paused" | "results";
+type View = "menu" | "warmup" | "playing" | "paused" | "results";
 
 export const WORLD_NAMES: Record<Level["id"], string> = {
   kitchen: "the kitchen",
@@ -107,6 +110,34 @@ class GameUi {
 
   showMenu(best: number): void {
     this.render("menu", menuView(best));
+  }
+
+  get currentView(): View {
+    return this.view;
+  }
+
+  /** The warm-up card covers the title screen; the camera mirror hides behind it. */
+  showWarmup(): void {
+    if (this.view !== "menu") {
+      return;
+    }
+    this.view = "warmup";
+    this.root.dataset.view = "warmup";
+    this.root.querySelector<HTMLElement>("[data-dialog-layer]")!.innerHTML =
+      warmupView();
+    this.signature = "";
+    this.update();
+  }
+
+  hideWarmup(): void {
+    if (this.view !== "warmup") {
+      return;
+    }
+    this.view = "menu";
+    this.root.dataset.view = "menu";
+    this.root.querySelector<HTMLElement>("[data-dialog-layer]")!.innerHTML = "";
+    this.signature = "";
+    this.update();
   }
 
   showFlight(): void {

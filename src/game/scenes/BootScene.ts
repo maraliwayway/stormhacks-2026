@@ -7,7 +7,7 @@ import { MenuConfirm } from "../menuConfirm";
 import { loadGameArt } from "../rendering/assets";
 import { ensureCatArt } from "../rendering/enemies";
 import { ensureHeavenArt } from "../rendering/heavenArt";
-import { DriftingClouds, SKY } from "../rendering/sky";
+import { DriftingClouds, SKY, addBackdropPigeons } from "../rendering/sky";
 import { bestScore } from "../storage";
 
 /** Title screen: clouds drift behind the player's bird until they put their palms together. */
@@ -38,6 +38,7 @@ export class BootScene extends Phaser.Scene {
     this.inputSource = inputManager.getSource();
     this.confirm = new MenuConfirm(inputManager.getState());
     this.cameras.main.setBackgroundColor(SKY);
+    addBackdropPigeons(this);
     this.clouds = new DriftingClouds(this);
     if (!this.artFailed) {
       ensureHeavenArt(this);
@@ -45,7 +46,11 @@ export class BootScene extends Phaser.Scene {
     }
     gameUi.setArtReady(!this.artFailed);
     gameUi.showMenu(bestScore.get());
-    const removeActions = [gameUi.onAction("advance", () => this.advance())];
+    const removeActions = [
+      gameUi.onAction("advance", () => this.advance()),
+      gameUi.onAction("warmup", () => gameUi.showWarmup()),
+      gameUi.onAction("warmup-done", () => gameUi.hideWarmup()),
+    ];
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
       removeActions.forEach((remove) => remove()),
     );
@@ -68,7 +73,12 @@ export class BootScene extends Phaser.Scene {
     }
     gameUi.updateInput(input);
     if (this.confirm.read(input)) {
-      this.advance();
+      // Palms together on the warm-up card means "done", not "start".
+      if (gameUi.currentView === "warmup") {
+        gameUi.hideWarmup();
+      } else {
+        this.advance();
+      }
     }
   }
 }
