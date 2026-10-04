@@ -3,6 +3,7 @@ import { inputManager } from '../../input/inputManager';
 import { keyboard } from '../../input/defaultInput';
 import { Flight, FLIGHT } from '../flight';
 import { gameEvents } from '../events';
+import { BIRD_BOX, HazardField } from '../hazards';
 
 export class GameScene extends Phaser.Scene {
   protected flight!: Flight;
@@ -14,6 +15,12 @@ export class GameScene extends Phaser.Scene {
   protected started = 0;
   protected phase: 'playing' | 'dying' | 'over' = 'playing';
   private lastMilestone = 0;
+  protected hazards!: HazardField;
+  protected hazardArt!: Phaser.GameObjects.Graphics;
+  private runFlaps = 0;
+  private overBaseline = 0;
+  private overSelectCount = 0;
+  private selectHeld = false;
 
   constructor() { super('Game'); }
 
@@ -21,6 +28,10 @@ export class GameScene extends Phaser.Scene {
     this.phase = 'playing';
     this.started = this.time.now;
     this.lastMilestone = 0;
+    this.runFlaps = 0;
+    this.selectHeld = Boolean(inputManager.getState().select);
+    this.hazards = new HazardField();
+    this.hazardArt = this.add.graphics().setDepth(5);
     const input = inputManager.getState();
     this.flight = new Flight(input.flapCount);
     this.flight.velocity = -200;
@@ -54,9 +65,19 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const input = inputManager.getState();
     this.badge.setVisible(input === keyboard.getState());
+    const selected = Boolean(input.select) && !this.selectHeld;
+    this.selectHeld = Boolean(input.select);
+    if (this.phase === 'over') {
+      if (input.flapCount < this.overBaseline) this.overBaseline = input.flapCount;
+      const confirmations = input.selectCount ?? 0;
+      if (confirmations < this.overSelectCount) this.overSelectCount = confirmations;
+      if (input.flapCount > this.overBaseline || selected || confirmations > this.overSelectCount) this.scene.restart();
+      return;
+    }
     if (this.phase !== 'playing') return;
     const dt = Math.min(delta, 50) / 1000;
     const flaps = this.flight.update(input, dt);
+    this.runFlaps += flaps;
     if (flaps > 0) gameEvents.emit('flap', { x: this.flight.x, y: this.flight.y, count: flaps });
     this.bird.setPosition(this.flight.x, this.flight.y);
     this.bird.setAngle(Phaser.Math.Clamp(this.flight.velocity / 25, -18, 20));
@@ -71,21 +92,64 @@ export class GameScene extends Phaser.Scene {
       ? 'Tap Space to flap   •   Left / right to change lane'
       : 'Tracking paused. Return to the camera or use keyboard mode.');
     this.drawBackdrop();
+    if (input.tracking && input.calibrated) {
+      this.hazards.advance(this.flight.cameraY);
+      const result = this.hazards.check({ x: this.flight.x, y: this.flight.y, ...BIRD_BOX });
+      this.drawHazards();
+      if (result.hit) { this.finishRun(result.hit.kind); return; }
+      for (const _miss of result.misses) {
+        gameEvents.emit('near_miss', { altitude: this.flight.altitude, x: this.flight.x, y: this.flight.y });
+      }
+    }
     if (this.flight.offscreen) this.finishRun('fall');
   }
 
-  protected finishRun(_reason: string): void {
+  protected finishRun(reason: string): void {
     if (this.phase !== 'playing') return;
+    this.phase = 'dying';
+    const duration = (this.time.now - this.started) / 1000;
+    gameEvents.emit('death', {
+      altitude: this.flight.altitude, duration, reason,
+      flapCount: this.runFlaps, flapRate: inputManager.getState().flapRate,
+    });
+    gameEvents.emit('run_end', { altitude: this.flight.altitude, duration });
+    this.bird.setTint(0xe87356);
+    this.tweens.add({ targets: this.bird, y: this.bird.y + 28, angle: 90, duration: 600 });
+    this.time.delayedCall(600, () => this.showGameOver());
+  }
+
+  private showGameOver(): void {
     this.phase = 'over';
-    this.add.text(640, 320, 'FLIGHT OVER\nPress Enter or flap to restart', {
+    this.overBaseline = inputManager.getState().flapCount;
+    this.overSelectCount = inputManager.getState().selectCount ?? 0;
+    this.selectHeld = Boolean(inputManager.getState().select);
+    this.add.rectangle(640, 360, 1280, 720, 0x183e46, 0.5).setScrollFactor(0).setDepth(39);
+    this.add.text(640, 320, `LEGENDARY FLOP\n${Math.floor(this.flight.altitude)} metres\n\nFlap or press Enter to try again`, {
       fontSize: '36px', color: '#fff4dc', backgroundColor: '#183e46',
       align: 'center', padding: { x: 40, y: 30 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(40);
-    const baseline = inputManager.getState().flapCount;
-    const restart = this.time.addEvent({ delay: 16, loop: true, callback: () => {
-      const input = inputManager.getState();
-      if (input.flapCount > baseline || input.select) { restart.remove(); this.scene.restart(); }
-    } });
+  }
+
+  private drawHazards(): void {
+    const g = this.hazardArt;
+    g.clear();
+    for (const h of this.hazards.items) {
+      const left = h.x - h.width / 2;
+      const top = h.y - h.height / 2;
+      g.fillStyle(h.kind === 'knife' ? 0x7893a0 : h.kind === 'pin' ? 0xb17148 : 0x517783);
+      g.fillRoundedRect(left, top, h.width, h.height, h.kind === 'knife' ? 4 : 14);
+      g.lineStyle(4, 0x173e47).strokeRoundedRect(left, top, h.width, h.height, 8);
+      if (h.kind === 'pot') {
+        g.strokeRect(left - 10, top + 18, 10, 15);
+        g.strokeRect(left + h.width, top + 18, 10, 15);
+        g.lineBetween(left - 5, top, left + h.width + 5, top);
+      } else if (h.kind === 'knife') {
+        g.fillStyle(0x173e47).fillRect(left, top, h.width * 0.3, h.height);
+      } else {
+        g.fillStyle(0x825738).fillRect(left - 18, h.y - 8, 18, 16);
+        g.fillRect(left + h.width, h.y - 8, 18, 16);
+      }
+    }
   }
 
   private drawBackdrop(): void {
