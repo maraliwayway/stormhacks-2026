@@ -42,7 +42,7 @@ Keyboard confirmation also uses the optional monotonic `selectCount` field so a 
 
 `src/game/events.ts` exposes typed `gameEvents.on(name, callback)` subscriptions. It returns an unsubscribe function. Events include `death`, `near_miss`, `new_best`, `milestone`, and `run_end`. Listener failures do not interrupt gameplay.
 
-Dev 3 can register `setScoreSink` from `src/net/scoreSync.ts` to send finished runs to the leaderboard. No backend endpoint is configured yet. Best altitude stays available locally when the backend or browser storage is unavailable.
+Dev 3 registers `setScoreSink` from `src/net/scoreSync.ts` to send finished runs to the leaderboard when `VITE_BACKEND_URL` is set. Best altitude stays available locally when the backend or browser storage is unavailable.
 
 Dev 1 can call `setDifficulty` in `src/game/difficulty.ts` with `enemyEveryMetres`, `enemySpeed`, and weights for `static`, `sweeper`, and `diver`. The first cat waits at least five seconds of active gameplay after the first flap, and this grace period restarts on every retry. Tracking loss pauses the timer. Cat frequency also increases with total run altitude, including across map loops. With default settings, encounter spacing ramps from 24 to 12 metres and the cooldown between warning starts drops from 6 to 4 seconds over the first 600 metres, then stays capped. Both the distance and cooldown must pass before another cat appears. The legacy speed/mix fields remain accepted for producer compatibility, but do not affect the cat: its warning always lasts 2.5 seconds at every altitude. The face marks and locks the bird's current lane, then disappears as a paw strikes that lane for 350 ms. Leave the marked lane to survive; climbing alone does not evade the strike. Tracking loss freezes the encounter. Heaven remains free of cats and obstacles.
 
@@ -64,7 +64,7 @@ Each flap adds a 700 px/s upward impulse, with upward speed capped at 1000 px/s.
 
 Copy `.env.example` to `.env.local`, set `VITE_ENABLE_WORMS=true`, and restart Vite to try it. Leave it off until the team's M3 core milestone passes. Worms appear beside hazards, play a short pickup sound, and save the total locally. The sound is an original generated tone that the designer can replace.
 
-The supplied kitchen and Dessert maps, five pigeon flight frames, and kitchen and desert obstacles are integrated. Optimized WebP copies total about 664 KB; the original PNGs remain unchanged. Cat encounters and Heaven retain procedural art. See [UI and artwork](docs/ui.md) for the design references, rendering boundaries, and asset preparation workflow. Voice playback and the backend transport remain team integration work.
+The supplied kitchen and Dessert maps, five pigeon flight frames, and kitchen and desert obstacles are integrated. Optimized WebP copies total about 664 KB; the original PNGs remain unchanged. Cat encounters and Heaven retain procedural art. See [UI and artwork](docs/ui.md) for the design references, rendering boundaries, and asset preparation workflow. Voice, sound effects, the live roast and the leaderboard are described in [Voice, story and backend](docs/dev3-voice-and-backend.md).
 
 | Folder | Owner / purpose |
 | --- | --- |
