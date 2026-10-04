@@ -54,6 +54,7 @@ export function createDebugOverlay(host: HTMLElement, width = 640, height = 480)
   };
 
   const onKey = (e: KeyboardEvent) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'd' || e.key === 'D') visible = !visible;
   };
   window.addEventListener('keydown', onKey);

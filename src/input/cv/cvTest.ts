@@ -1,50 +1,76 @@
-import { startTracker, getLatest, onFrame } from './poseTracker';
-import { createGestureDetector, type GestureState } from './gestureDetector';
-import { L } from './landmarks';
+import { inputManager } from '../inputManager';
+import { createMenuInput } from '../menuInput';
+import { createKeyboardInput } from '../keyboardInput';
+import { createCvInput } from './cvInput';
+import { getLatest } from './poseTracker';
 import { createDebugOverlay } from './debugOverlay';
+import { createCalibrationGuide } from './calibrationGuide';
 
-const btn = document.getElementById('start') as HTMLButtonElement;
+// Dev-only page. Exercises the same API the game uses: inputManager.getState() + menu events.
+
+const startBtn = document.getElementById('start') as HTMLButtonElement;
+const kbBtn = document.getElementById('kb') as HTMLButtonElement;
 const video = document.getElementById('video') as HTMLVideoElement;
 const out = document.getElementById('out') as HTMLPreElement;
+const eventsEl = document.getElementById('events') as HTMLPreElement;
+const stage = document.getElementById('stage')!;
 
-const detector = createGestureDetector();
-let gestures: GestureState | null = null;
-onFrame((snap) => {
-  gestures = detector.update(snap.landmarks, snap.frameTs);
-});
+const menu = createMenuInput(() => inputManager.getState());
+const eventLog: string[] = [];
+let cv: ReturnType<typeof createCvInput> | null = null;
+let timer = 0;
 
-btn.onclick = async () => {
-  btn.disabled = true;
-  btn.textContent = 'Loading...';
+function begin() {
+  startBtn.disabled = true;
+  kbBtn.disabled = true;
+  // Menu events: poll once per frame, like a Phaser scene's update().
+  const loop = () => {
+    for (const ev of menu.poll()) {
+      eventLog.unshift(`${new Date().toLocaleTimeString()}  ${ev}`);
+      eventLog.length = Math.min(eventLog.length, 6);
+    }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+
+  timer = window.setInterval(() => {
+    const s = inputManager.getState();
+    const cam = getLatest();
+    const f = (n: number) => n.toFixed(2);
+    out.textContent = [
+      cv ? `fps ${cam.fps.toFixed(1)} | inference ${cam.inferenceMs.toFixed(1)} ms` : 'keyboard source',
+      `tracking ${s.tracking} | calibrated ${s.calibrated}`,
+      `flapCount ${s.flapCount} | flapRate ${f(s.flapRate)}/s | flapping ${s.flapping} | flapVelocity ${f(s.flapVelocity)}`,
+      `strafe ${f(s.strafe)} | left ${s.strafeLeft} | right ${s.strafeRight}`,
+      `jump ${s.jump} | squat ${s.squat}`,
+      `menu confirm progress ${f(menu.confirmProgress())}`,
+    ].join('\n');
+    eventsEl.textContent = 'menu events:\n' + eventLog.join('\n');
+  }, 100);
+}
+
+startBtn.onclick = async () => {
+  startBtn.textContent = 'Loading...';
   try {
-    await startTracker(video);
+    cv = createCvInput(video);
+    await cv.start!();
   } catch (e) {
-    btn.textContent = 'Error';
+    startBtn.textContent = 'Error';
     out.textContent = String(e);
     console.error(e);
     return;
   }
-  btn.textContent = 'Running';
-  createDebugOverlay(document.getElementById('stage')!);
+  startBtn.textContent = 'Running';
+  inputManager.setSource(cv);
+  createDebugOverlay(stage);
+  createCalibrationGuide(stage, () => cv!.getCalibration(), () => cv!.getPrompt());
+  begin();
+};
 
-  setInterval(() => {
-    const s = getLatest();
-    const lm = s.landmarks;
-    if (!lm) {
-      out.textContent = `fps ${s.fps.toFixed(1)} | inference ${s.inferenceMs.toFixed(1)} ms\nNO BODY DETECTED`;
-      return;
-    }
-    const shoulderY = (lm[L.SHOULDER_L].y + lm[L.SHOULDER_R].y) / 2;
-    const shoulderW = Math.abs(lm[L.SHOULDER_L].x - lm[L.SHOULDER_R].x);
-    out.textContent = [
-      `fps ${s.fps.toFixed(1)} | inference ${s.inferenceMs.toFixed(1)} ms`,
-      `landmarks: ${lm.length}`,
-      `shoulder width: ${shoulderW.toFixed(3)}`,
-      `L wrist y - shoulder y: ${(lm[L.WRIST_L].y - shoulderY).toFixed(3)}`,
-      `R wrist y - shoulder y: ${(lm[L.WRIST_R].y - shoulderY).toFixed(3)}`,
-      '',
-      gestures ? `flapCount ${gestures.flapCount} | flapRate ${gestures.flapRate.toFixed(2)}/s | flapping ${gestures.flapping}` : '',
-      gestures ? `strafe ${gestures.strafe.toFixed(2)} | strafeL ${gestures.strafeLeft} | strafeR ${gestures.strafeRight} | jump ${gestures.jump} | squat ${gestures.squat}` : '',
-    ].join('\n');
-  }, 200);
+kbBtn.onclick = async () => {
+  const kb = createKeyboardInput();
+  await kb.start!();
+  inputManager.setSource(kb);
+  kbBtn.textContent = 'Keyboard: Space/arrows/WASD';
+  begin();
 };

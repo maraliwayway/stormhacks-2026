@@ -11,6 +11,8 @@ export interface TrackerSnapshot {
 const latest: TrackerSnapshot = { landmarks: null, fps: 0, inferenceMs: 0, frameTs: 0 };
 
 let landmarker: PoseLandmarker | null = null;
+let stream: MediaStream | null = null;
+let running = false;
 let lastTs = 0;
 let frameCount = 0;
 let fpsLogTick = 0;
@@ -20,8 +22,12 @@ type FrameListener = (snap: TrackerSnapshot) => void;
 const listeners: FrameListener[] = [];
 
 /** Called once per processed camera frame (not per render frame). Keep listeners cheap. */
-export function onFrame(cb: FrameListener) {
+export function onFrame(cb: FrameListener): () => void {
   listeners.push(cb);
+  return () => {
+    const i = listeners.indexOf(cb);
+    if (i >= 0) listeners.splice(i, 1);
+  };
 }
 
 export function getLatest(): TrackerSnapshot {
@@ -29,21 +35,29 @@ export function getLatest(): TrackerSnapshot {
 }
 
 export async function startTracker(videoEl: HTMLVideoElement): Promise<void> {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { width: 640, height: 480 },
-    audio: false,
-  });
-  videoEl.srcObject = stream;
-  await videoEl.play();
+  if (running) return;
+  running = true;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480 },
+      audio: false,
+    });
+    videoEl.srcObject = stream;
+    await videoEl.play();
 
-  const vision = await FilesetResolver.forVisionTasks('/wasm');
-  landmarker = await PoseLandmarker.createFromOptions(vision, {
-    baseOptions: { modelAssetPath: '/models/pose_landmarker_lite.task', delegate: 'GPU' },
-    runningMode: 'VIDEO',
-    numPoses: 1,
-  });
+    const vision = await FilesetResolver.forVisionTasks('/wasm');
+    landmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: '/models/pose_landmarker_lite.task', delegate: 'GPU' },
+      runningMode: 'VIDEO',
+      numPoses: 1,
+    });
+  } catch (e) {
+    stopTracker(); // release the camera and allow a retry
+    throw e;
+  }
 
-  const onFrame = (now: number) => {
+  const tick = (now: number) => {
+    if (!running) return;
     if (landmarker) {
       const ts = Math.max(now, lastTs + 1);
       lastTs = ts;
@@ -66,7 +80,17 @@ export async function startTracker(videoEl: HTMLVideoElement): Promise<void> {
         fpsWindowStart = performance.now();
       }
     }
-    videoEl.requestVideoFrameCallback(onFrame);
+    videoEl.requestVideoFrameCallback(tick);
   };
-  videoEl.requestVideoFrameCallback(onFrame);
+  videoEl.requestVideoFrameCallback(tick);
+}
+
+/** Stops the loop, releases the camera and frees the model. Safe to call twice. */
+export function stopTracker(): void {
+  running = false;
+  stream?.getTracks().forEach((t) => t.stop());
+  stream = null;
+  landmarker?.close();
+  landmarker = null;
+  latest.landmarks = null;
 }

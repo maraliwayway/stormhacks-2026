@@ -2,7 +2,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:gestures": "tsc src/input/cv/gestureDetector.test.ts --outDir .test-out --module commonjs --target es2022 --skipLibCheck --types node && node .test-out/gestureDetector.test.js"
+    "test:gestures": "tsc src/input/cv/gestureDetector.test.ts --outDir .test-out --module commonjs --target es2022 --skipLibCheck --types node && node .test-out/gestureDetector.test.js",
+    "test:calibration": "tsc src/input/cv/calibration.test.ts --outDir .test-out --module commonjs --target es2022 --skipLibCheck --types node && node .test-out/calibration.test.js",
+    "test": "npm run test:gestures && npm run test:calibration && npm run test:input",
+    "test:input": "tsc src/input/input.test.ts --outDir .test-out --module commonjs --target es2022 --skipLibCheck --types node --lib es2022,dom && node .test-out/input.test.js"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1"

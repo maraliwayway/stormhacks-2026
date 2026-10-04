@@ -5,12 +5,16 @@
     <title>CV test</title>
   </head>
   <body>
-    <button id="start">Start camera</button>
-    <br />
+    <p>
+      <button id="start">Start camera</button>
+      <button id="kb">Use keyboard instead</button>
+      <span>D = debug overlay, C = recalibrate</span>
+    </p>
     <div id="stage" style="position:relative;width:640px;height:480px">
       <video id="video" width="640" height="480" playsinline muted style="transform: scaleX(-1)"></video>
     </div>
     <pre id="out"></pre>
+    <pre id="events" style="color:#0a7"></pre>
     <script type="module" src="/src/input/cv/cvTest.ts"></script>
   </body>
 </html>
