@@ -1,59 +1,65 @@
-import { inputManager } from '../inputManager';
-import { keyboard } from '../defaultInput';
-import { createCvInput } from './cvInput';
-import { getLatest } from './poseTracker';
-import { createDebugOverlay } from './debugOverlay';
-import { createCalibrationGuide } from './calibrationGuide';
+import { keyboard } from "../defaultInput";
+import { inputManager } from "../inputManager";
+import { createCalibrationGuide } from "./calibrationGuide";
+import { createCvInput } from "./cvInput";
+import { createDebugOverlay } from "./debugOverlay";
+import { getLatest } from "./poseTracker";
 
 // Dev-only page (/cv-test.html): shows the raw InputState the game reads.
 
-const startBtn = document.getElementById('start') as HTMLButtonElement;
-const kbBtn = document.getElementById('kb') as HTMLButtonElement;
-const video = document.getElementById('video') as HTMLVideoElement;
-const out = document.getElementById('out') as HTMLPreElement;
-const stage = document.getElementById('stage')!;
+const startButton = document.getElementById("start") as HTMLButtonElement;
+const keyboardButton = document.getElementById("kb") as HTMLButtonElement;
+const video = document.getElementById("video") as HTMLVideoElement;
+const output = document.getElementById("out") as HTMLPreElement;
+const stage = document.getElementById("stage")!;
 
 let cv: ReturnType<typeof createCvInput> | null = null;
 
 function begin() {
-  startBtn.disabled = true;
-  kbBtn.disabled = true;
+  startButton.disabled = true;
+  keyboardButton.disabled = true;
   window.setInterval(() => {
-    const s = inputManager.getState();
-    const cam = getLatest();
-    const f = (n: number) => n.toFixed(2);
-    out.textContent = [
-      cv ? `fps ${cam.fps.toFixed(1)} | inference ${cam.inferenceMs.toFixed(1)} ms` : 'keyboard source',
-      `tracking ${s.tracking} | calibrated ${s.calibrated}`,
-      `flapCount ${s.flapCount} | flapRate ${f(s.flapRate)}/s | flapping ${s.flapping} | flapVelocity ${f(s.flapVelocity)}`,
-      `strafe ${f(s.strafe)} | left ${s.strafeLeft} | right ${s.strafeRight}`,
-      `jump ${s.jump} | squat ${s.squat}`,
-      `swipes (selectCount) ${s.selectCount ?? 0}`,
-    ].join('\n');
+    const state = inputManager.getState();
+    const camera = getLatest();
+    const formatNumber = (value: number) => value.toFixed(2);
+    output.textContent = [
+      cv
+        ? `fps ${camera.fps.toFixed(1)} | inference ${camera.inferenceMs.toFixed(1)} ms`
+        : "keyboard source",
+      `tracking ${state.tracking} | calibrated ${state.calibrated}`,
+      `flapCount ${state.flapCount} | flapRate ${formatNumber(state.flapRate)}/s | flapping ${state.flapping} | flapVelocity ${formatNumber(state.flapVelocity)}`,
+      `strafe ${formatNumber(state.strafe)} | left ${state.strafeLeft} | right ${state.strafeRight}`,
+      `jump ${state.jump} | squat ${state.squat}`,
+      `waves (selectCount) ${state.selectCount ?? 0}`,
+    ].join("\n");
   }, 100);
 }
 
-startBtn.onclick = async () => {
-  startBtn.textContent = 'Loading...';
+startButton.onclick = async () => {
+  startButton.textContent = "Loading...";
   try {
     cv = createCvInput(video);
-    await cv.start!();
-  } catch (e) {
-    startBtn.textContent = 'Error';
-    out.textContent = String(e);
-    console.error(e);
+    await cv.start();
+  } catch (error) {
+    startButton.textContent = "Error";
+    output.textContent = String(error);
+    console.error(error);
     return;
   }
-  startBtn.textContent = 'Running';
+  startButton.textContent = "Running";
   inputManager.setSource(cv);
   createDebugOverlay(stage);
-  createCalibrationGuide(stage, () => cv!.getCalibration(), () => cv!.getPrompt());
+  createCalibrationGuide(
+    stage,
+    () => cv!.getCalibration(),
+    () => cv!.getPrompt(),
+  );
   begin();
 };
 
-kbBtn.onclick = async () => {
+keyboardButton.onclick = async () => {
   await keyboard.start();
   inputManager.setSource(keyboard);
-  kbBtn.textContent = 'Keyboard: Space/arrows';
+  keyboardButton.textContent = "Keyboard: Space/arrows";
   begin();
 };

@@ -1,6 +1,6 @@
-import type { InputState } from '../input/types';
+import type { InputState } from "../input/types";
 
-/** One confirmation per jump or Enter press, even across scene changes. */
+/** One confirmation per hand wave, jump or Enter press, even across scene changes. */
 export class MenuConfirm {
   private held: boolean;
   private count: number;

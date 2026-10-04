@@ -1,5 +1,5 @@
-import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
-import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
+import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
+import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 
 export interface TrackerSnapshot {
   landmarks: NormalizedLandmark[] | null;
@@ -8,25 +8,32 @@ export interface TrackerSnapshot {
   frameTs: number;
 }
 
-const latest: TrackerSnapshot = { landmarks: null, fps: 0, inferenceMs: 0, frameTs: 0 };
+const latest: TrackerSnapshot = {
+  landmarks: null,
+  fps: 0,
+  inferenceMs: 0,
+  frameTs: 0,
+};
 
 let landmarker: PoseLandmarker | null = null;
 let stream: MediaStream | null = null;
 let running = false;
-let lastTs = 0;
+let lastTimestampMs = 0;
 let frameCount = 0;
 let fpsLogTick = 0;
 let fpsWindowStart = performance.now();
 
-type FrameListener = (snap: TrackerSnapshot) => void;
+type FrameListener = (snapshot: TrackerSnapshot) => void;
 const listeners: FrameListener[] = [];
 
 /** Called once per processed camera frame (not per render frame). Keep listeners cheap. */
-export function onFrame(cb: FrameListener): () => void {
-  listeners.push(cb);
+export function onFrame(listener: FrameListener): () => void {
+  listeners.push(listener);
   return () => {
-    const i = listeners.indexOf(cb);
-    if (i >= 0) listeners.splice(i, 1);
+    const index = listeners.indexOf(listener);
+    if (index >= 0) {
+      listeners.splice(index, 1);
+    }
   };
 }
 
@@ -34,61 +41,72 @@ export function getLatest(): TrackerSnapshot {
   return latest;
 }
 
-export async function startTracker(videoEl: HTMLVideoElement): Promise<void> {
-  if (running) return;
+export async function startTracker(video: HTMLVideoElement): Promise<void> {
+  if (running) {
+    return;
+  }
   running = true;
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480 },
+      video: { width: 640, height: 480, frameRate: { ideal: 60, max: 60 } },
       audio: false,
     });
-    videoEl.srcObject = stream;
-    await videoEl.play();
+    video.srcObject = stream;
+    await video.play();
 
-    const vision = await FilesetResolver.forVisionTasks('/wasm');
+    const vision = await FilesetResolver.forVisionTasks("/wasm");
     landmarker = await PoseLandmarker.createFromOptions(vision, {
-      baseOptions: { modelAssetPath: '/models/pose_landmarker_lite.task', delegate: 'GPU' },
-      runningMode: 'VIDEO',
+      baseOptions: {
+        modelAssetPath: "/models/pose_landmarker_lite.task",
+        delegate: "GPU",
+      },
+      runningMode: "VIDEO",
       numPoses: 1,
     });
-  } catch (e) {
+  } catch (error) {
     stopTracker(); // release the camera and allow a retry
-    throw e;
+    throw error;
   }
 
   const tick = (now: number) => {
-    if (!running) return;
+    if (!running) {
+      return;
+    }
     if (landmarker) {
-      const ts = Math.max(now, lastTs + 1);
-      lastTs = ts;
+      const timestampMs = Math.max(now, lastTimestampMs + 1);
+      lastTimestampMs = timestampMs;
 
-      const t0 = performance.now();
-      const result = landmarker.detectForVideo(videoEl, ts);
-      latest.inferenceMs = performance.now() - t0;
+      const inferenceStartedMs = performance.now();
+      const result = landmarker.detectForVideo(video, timestampMs);
+      latest.inferenceMs = performance.now() - inferenceStartedMs;
       latest.landmarks = result.landmarks[0] ?? null;
-      latest.frameTs = ts;
-      for (const cb of listeners) cb(latest);
+      latest.frameTs = timestampMs;
+      for (const listener of listeners) {
+        listener(latest);
+      }
 
       frameCount++;
       const elapsed = performance.now() - fpsWindowStart;
       if (elapsed >= 1000) {
         latest.fps = (frameCount * 1000) / elapsed;
         if (++fpsLogTick % 5 === 0) {
-          console.log(`[cv] ${latest.fps.toFixed(1)} fps, ${latest.inferenceMs.toFixed(1)} ms inference`);
+          console.log(
+            `[cv] ${latest.fps.toFixed(1)} fps, ${latest.inferenceMs.toFixed(1)} ms inference`,
+          );
         }
         frameCount = 0;
         fpsWindowStart = performance.now();
       }
     }
-    videoEl.requestVideoFrameCallback(tick);
+    video.requestVideoFrameCallback(tick);
   };
-  videoEl.requestVideoFrameCallback(tick);
+  video.requestVideoFrameCallback(tick);
 }
 
 /** Stops the loop, releases the camera and frees the model. Safe to call twice. */
 export function stopTracker(): void {
   running = false;
-  stream?.getTracks().forEach((t) => t.stop());
+  stream?.getTracks().forEach((track) => track.stop());
   stream = null;
   landmarker?.close();
   landmarker = null;
