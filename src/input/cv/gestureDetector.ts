@@ -44,10 +44,10 @@ export const THRESHOLDS = {
   squatEnter: 0.4,
   squatExit: 0.25,
   refractoryMs: 250,
-  swipeWindowMs: 500, //    the sweep must happen within this
-  swipeDistance: 1.0, //    right wrist travels this far (shoulder widths) relative to the shoulders
-  swipeMaxDrift: 0.6, //    ...and may rise/fall at most this much, so flaps do not count
-  swipeRefractoryMs: 800,
+  waveWindowMs: 1200,
+  waveDistance: 0.25, // small side-to-side travel in shoulder widths, in each direction
+  waveRaiseMargin: 0.1, // wrist above shoulder height
+  waveMaxDrift: 0.35, // reject vertical flapping motion
 };
 
 export interface GestureState {
@@ -56,8 +56,8 @@ export interface GestureState {
   flapVelocity: number;
   flapCount: number;
   flapRate: number;
-  /** Total right-arm swipes (left -> right on the mirrored view). Only ever increases. */
-  swipeCount: number;
+  /** Total completed hand waves. Only ever increases. */
+  waveCount: number;
   /** Analog strafe: -1 (fully left) .. 0 (centre) .. +1 (fully right), proportional to how far you lean/step. */
   strafe: number;
   strafeLeft: boolean;
@@ -76,7 +76,7 @@ export function createGestureDetector() {
     shoulderY: mkBodyFilter(),
     hipX: mkBodyFilter(), hipY: mkBodyFilter(),
     shoulderX: mkBodyFilter(),
-    wristRx: mkWristFilter(),
+    wristLx: mkWristFilter(), wristRx: mkWristFilter(),
   };
 
   // flap
@@ -89,10 +89,11 @@ export function createGestureDetector() {
   let flapTimes: number[] = [];
   let flapSpeed = 0;
 
-  // swipe: right wrist position relative to the shoulders, last ~500 ms
-  let swipeCount = 0;
-  let lastSwipeTs = -Infinity;
-  let swipeTrail: { ts: number; rel: number; y: number }[] = [];
+  // One raised hand moves sideways and back; lower both hands before confirming again.
+  let waveCount = 0;
+  let waveLatched = false;
+  type Wave = { start: number; low: number; high: number; peak: number; direction: number; y: number };
+  const waves: { L: Wave | null; R: Wave | null } = { L: null, R: null };
 
   // held gestures
   let strafe = 0;
@@ -110,7 +111,8 @@ export function createGestureDetector() {
     for (const w of [wrist.L, wrist.R]) {
       w.above = false; w.downTs = -Infinity; w.prevY = null;
     }
-    swipeTrail = [];
+    waves.L = waves.R = null;
+    waveLatched = false;
     strafe = 0;
     strafeLeft = strafeRight = jump = squat = false;
     prevHipY = null;
@@ -174,23 +176,37 @@ export function createGestureDetector() {
     }
     flapTimes = flapTimes.filter((t) => ts - t <= THRESHOLDS.rateWindowMs);
 
-    // ---- swipe: right arm sweeps from the player's left, across the body, out to their right ----
-    // Measured relative to the shoulders, so leaning or stepping sideways does not count.
-    // Image x is not mirrored: the player's right is SMALLER x, so a swipe is x decreasing.
     const shoulderX = f.shoulderX.filter((lm[L.SHOULDER_L].x + lm[L.SHOULDER_R].x) / 2, ts);
-    const rel = (f.wristRx.filter(lm[L.WRIST_R].x, ts) - shoulderX) / sw;
-    swipeTrail.push({ ts, rel, y: (wy.R - shoulderY) / sw });
-    while (swipeTrail.length && ts - swipeTrail[0].ts > THRESHOLDS.swipeWindowMs) swipeTrail.shift();
-    const startRel = Math.max(...swipeTrail.map((p) => p.rel));
-    const yRange = Math.max(...swipeTrail.map((p) => p.y)) - Math.min(...swipeTrail.map((p) => p.y));
-    if (
-      startRel - rel >= THRESHOLDS.swipeDistance &&
-      yRange <= THRESHOLDS.swipeMaxDrift &&
-      ts - lastSwipeTs >= THRESHOLDS.swipeRefractoryMs
-    ) {
-      swipeCount++;
-      lastSwipeTs = ts;
-      swipeTrail = [];
+    const wx = { L: f.wristLx.filter(lm[L.WRIST_L].x, ts), R: f.wristRx.filter(lm[L.WRIST_R].x, ts) };
+    const raised = { L: wy.L < shoulderY - THRESHOLDS.waveRaiseMargin * sw,
+      R: wy.R < shoulderY - THRESHOLDS.waveRaiseMargin * sw };
+    if (!raised.L && !raised.R) waveLatched = false;
+    for (const side of ['L', 'R'] as const) {
+      // A one-hand wave stays separate from two-arm flapping.
+      if (waveLatched || !raised[side] || raised[side === 'L' ? 'R' : 'L']) {
+        waves[side] = null;
+        continue;
+      }
+      const rel = (wx[side] - shoulderX) / sw;
+      const y = (wy[side] - shoulderY) / sw;
+      let w = waves[side];
+      if (!w || (w.direction !== 0 && ts - w.start > THRESHOLDS.waveWindowMs) || Math.abs(y - w.y) > THRESHOLDS.waveMaxDrift) {
+        waves[side] = w = { start: ts, low: rel, high: rel, peak: rel, direction: 0, y };
+      }
+      if (w.direction === 0) {
+        w.low = Math.min(w.low, rel);
+        w.high = Math.max(w.high, rel);
+        if (rel - w.low >= THRESHOLDS.waveDistance) w.direction = 1;
+        else if (w.high - rel >= THRESHOLDS.waveDistance) w.direction = -1;
+        if (w.direction !== 0) { w.start = ts; w.peak = rel; }
+      } else if (w.direction !== 0) {
+        if ((rel - w.peak) * w.direction > 0) w.peak = rel;
+        if ((w.peak - rel) * w.direction >= THRESHOLDS.waveDistance) {
+          waveCount++;
+          waveLatched = true;
+          waves.L = waves.R = null;
+        }
+      }
     }
 
     // ---- body position gestures (relative to calibrated baseline) ----
@@ -226,7 +242,7 @@ export function createGestureDetector() {
       flapVelocity: flapping ? flapSpeed : 0,
       flapCount,
       flapRate: flapTimes.length / (THRESHOLDS.rateWindowMs / 1000),
-      swipeCount,
+      waveCount,
       strafe, strafeLeft, strafeRight, jump, squat,
     };
   }

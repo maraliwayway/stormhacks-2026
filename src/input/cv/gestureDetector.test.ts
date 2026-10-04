@@ -200,25 +200,70 @@ const tests: Record<string, () => void> = {
     s = run(d, t, { hipX: C.hipX - sw * 0.8 }, { hipX: C.hipX + sw * 0.8 }, 900);
     assert.equal(s.strafe, -1, 'left is negative');
   },
-  'swipe: right arm sweeping left -> right (mirrored view) counts once'() {
-    const { d, t } = fresh();
-    run(d, t, {}, { wristY: 0.45, wristRx: 0.7 }, 300); // arm across the body
-    const s = run(d, t, { wristY: 0.45, wristRx: 0.7 }, { wristY: 0.45, wristRx: 0.2 }, 400);
-    assert.equal(s.swipeCount, 1);
-    const again = run(d, t, { wristY: 0.45, wristRx: 0.2 }, { wristY: 0.45, wristRx: 0.2 }, 600);
-    assert.equal(again.swipeCount, 1, 'holding the arm out does not repeat');
+  'a small wave with either raised hand confirms once and must be lowered before another confirmation'() {
+    for (const side of [L.WRIST_L, L.WRIST_R]) {
+      for (const direction of [-1, 1]) {
+        const { d, t } = fresh();
+        const baseX = side === L.WRIST_L ? 0.65 : 0.35;
+        const feed = (x: number, y = 0.25, frames = 5) => {
+          let state!: ReturnType<typeof d.update>;
+          for (let i = 0; i < frames; i++) {
+            const lm = pose();
+            lm[side] = { x, y };
+            t.now += FRAME;
+            state = d.update(lm, t.now, C);
+          }
+          return state;
+        };
+        feed(baseX);
+        feed(baseX + direction * 0.1);
+        let s = feed(baseX);
+        assert.equal(s.waveCount, 1, `side ${side}, direction ${direction}`);
+        assert.equal(s.flapCount, 0);
+        // Continued waving with the hand raised cannot skip the controls screen.
+        feed(baseX + direction * 0.1);
+        s = feed(baseX);
+        assert.equal(s.waveCount, 1);
+        feed(baseX, 0.6);
+        feed(baseX);
+        feed(baseX + direction * 0.1);
+        s = feed(baseX);
+        assert.equal(s.waveCount, 2);
+      }
+    }
   },
-  'swipe: slow, reversed, or vertical movements do not count'() {
-    const slow = fresh();
-    run(slow.d, slow.t, {}, { wristY: 0.45, wristRx: 0.7 }, 300);
-    assert.equal(run(slow.d, slow.t, { wristY: 0.45, wristRx: 0.7 }, { wristY: 0.45, wristRx: 0.2 }, 2500).swipeCount, 0);
-
-    const back = { d: createGestureDetector(), t: { now: 1000 } };
-    run(back.d, back.t, { wristY: 0.45, wristRx: 0.2 }, { wristY: 0.45, wristRx: 0.2 }, 600); // arm already out
-    assert.equal(run(back.d, back.t, { wristY: 0.45, wristRx: 0.2 }, { wristY: 0.45, wristRx: 0.7 }, 400).swipeCount, 0, 'right -> left is not a swipe');
-
+  'one sweep, a stationary raised hand, jitter and flapping cannot confirm'() {
+    const { d, t } = fresh();
+    const feed = (x: number, frames = 15) => {
+      let s!: ReturnType<typeof d.update>;
+      for (let i = 0; i < frames; i++) {
+        const lm = pose();
+        lm[L.WRIST_R] = { x: x + Math.sin(i) * 0.005, y: 0.25 };
+        t.now += FRAME;
+        s = d.update(lm, t.now, C);
+      }
+      return s;
+    };
+    assert.equal(feed(0.35).waveCount, 0);
+    assert.equal(feed(0.5).waveCount, 0, 'one sweep is not a back-and-forth wave');
+    assert.equal(feed(0.5, 60).waveCount, 0, 'holding and jitter do not confirm');
     const flapper = fresh();
-    assert.equal(flap(flapper.d, flapper.t, 200).swipeCount, 0, 'a flap is not a swipe');
+    for (let i = 0; i < 3; i++) assert.equal(flap(flapper.d, flapper.t, 200).waveCount, 0);
+  },
+  'tracking loss clears an unfinished wave without replaying it on return'() {
+    const { d, t } = fresh();
+    for (const x of [0.35, 0.35, 0.35, 0.5, 0.5, 0.5]) {
+      const lm = pose();
+      lm[L.WRIST_R] = { x, y: 0.25 };
+      t.now += FRAME;
+      assert.equal(d.update(lm, t.now, C).waveCount, 0);
+    }
+    t.now += FRAME;
+    d.update(null, t.now, C);
+    const lm = pose();
+    lm[L.WRIST_R] = { x: 0.35, y: 0.25 };
+    t.now += FRAME;
+    assert.equal(d.update(lm, t.now, C).waveCount, 0);
   },
   'strafe right'() {
     const { d, t } = fresh();

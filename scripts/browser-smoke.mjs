@@ -33,6 +33,52 @@ try {
   });
   const canvas = await page.locator('canvas').boundingBox();
   assert.ok(Math.abs(canvas.width / canvas.height - 16 / 9) < 0.01);
+  // Feed synthetic camera landmarks through the real detector and menu confirmation.
+  await page.evaluate(async () => {
+    const { createGestureDetector, DEFAULT_CALIBRATION: cal } = await import('/src/input/cv/gestureDetector.ts');
+    const { L } = await import('/src/input/cv/landmarks.ts');
+    const detector = createGestureDetector();
+    let ts = 1000;
+    window.waveInput = { ...window.testEmpty, tracking: true, calibrated: true, selectCount: 0 };
+    window.testManager.setSource({ getState: () => window.waveInput });
+    window.waveFrames = (x, y = 0.25, frames = 6) => {
+      for (let i = 0; i < frames; i++) {
+        const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.6 }));
+        lm[L.SHOULDER_L] = { x: 0.375, y: cal.shoulderY };
+        lm[L.SHOULDER_R] = { x: 0.625, y: cal.shoulderY };
+        lm[L.HIP_L] = { x: 0.375, y: cal.hipY };
+        lm[L.HIP_R] = { x: 0.625, y: cal.hipY };
+        lm[L.WRIST_L] = { x: 0.65, y: 0.6 };
+        lm[L.WRIST_R] = { x, y };
+        ts += 33;
+        const g = detector.update(lm, ts, cal);
+        window.waveInput = { ...window.testEmpty, ...g, calibrated: true, selectCount: g.waveCount };
+      }
+    };
+    window.waveFrames(0.35, 0.6);
+    window.waveFrames(0.35);
+    window.waveFrames(0.45);
+    window.waveFrames(0.35);
+  });
+  await page.waitForFunction(() => window.testGame.scene.getScene('Boot').stage === 'controls');
+  await page.evaluate(() => { window.waveFrames(0.45); window.waveFrames(0.35); });
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => window.testGame.scene.isActive('Game')), false,
+    'continued waving cannot skip the controls');
+  await page.evaluate(() => {
+    window.waveFrames(0.35, 0.6);
+    window.waveFrames(0.35);
+    window.waveFrames(0.45);
+    window.waveFrames(0.35);
+  });
+  await page.waitForFunction(() => window.testGame.scene.isActive('Game'));
+  await page.evaluate(async () => {
+    const { keyboard } = await import('/src/input/defaultInput.ts');
+    window.testManager.setSource(keyboard);
+    window.testGame.scene.stop('Game');
+    window.testGame.scene.start('Boot');
+  });
+  await page.waitForFunction(() => window.testGame.scene.getScene('Boot').stage === 'menu');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.testGame.scene.getScene('Boot').stage === 'controls');
   assert.equal(await page.evaluate(() => window.testGame.scene.isActive('Game')), false);
@@ -147,21 +193,24 @@ try {
   await page.evaluate(async () => {
     window.testInput.tracking = true;
     const scene = window.testGame.scene.getScene('Game');
+    // Boundary screenshots must not let gravity end this controlled test run.
+    window.testGame.scene.pause('Game');
     scene.flight.y = 550 - 60 * 40;
+    scene.flight.cameraY = scene.flight.y - 360;
     scene.flight.velocity = -100;
     window.endEvents = 0;
     window.winEvents = 0;
     const { gameEvents } = await import('/src/game/events.ts');
     gameEvents.on('run_end', () => window.endEvents++);
     gameEvents.on('win', () => window.winEvents++);
+    scene.update(0, 16);
   });
   await page.waitForFunction(() => window.testGame.scene.getScene('Game').level.id === 'dessert');
   assert.equal(await page.evaluate(() => window.testGame.scene.getScene('Game').levelHud.text), 'DESSERT');
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.screenshot({ path: 'test-results/dessert.png' });
-  // Real scene transitions keep one run alive through Heaven and multiple laps.
+  // Step the paused scene through Heaven and multiple laps without ending the run.
   await page.evaluate(async () => {
-    window.testGame.scene.pause('Game');
     const { FLIGHT } = await import('/src/game/flight.ts');
     const { HazardField } = await import('/src/game/hazards.ts');
     const { EnemyField } = await import('/src/game/enemies.ts');
@@ -271,7 +320,7 @@ try {
   await page.evaluate(() => { window.testGame.scene.getScene('Game').flight.x = 640; });
   assert.equal((await catStep(1)).phase, 'dying');
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, no runtime errors.');
+  console.log('Browser checks passed: raised-hand wave menus, fresh wave after lowering, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, no runtime errors.');
 } finally {
   await browser?.close();
   await server.close();

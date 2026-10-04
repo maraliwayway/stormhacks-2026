@@ -62,7 +62,7 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
         state.flapVelocity = g.flapVelocity;
         state.flapCount = g.flapCount;
         state.flapRate = g.flapRate;
-        state.selectCount = g.swipeCount; // a right-arm swipe confirms menus (game reads selectCount)
+        state.selectCount = g.waveCount; // a hand wave confirms menus (game reads selectCount)
         state.strafe = g.strafe;
         state.strafeLeft = g.strafeLeft;
         state.strafeRight = g.strafeRight;

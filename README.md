@@ -33,7 +33,7 @@ The browser test starts its own local server and checks start, flight, restart, 
 
 `src/input/types.ts` defines the shared `InputState` and `InputSource` contract. Input producers register with `inputManager.setSource(source)`. Gameplay reads `inputManager.getState()` every frame without waiting on the camera or network.
 
-Keyboard fallback starts by default. Space records one flap per press, arrows provide strafe/jump/squat, and Enter confirms menus. The keyboard badge hides when a CV producer replaces the source. CV menu confirmation uses a fresh jump or the optional `select` field. Holding Space does not generate repeated flaps.
+Keyboard fallback starts by default. Space records one flap per press, arrows provide strafe/jump/squat, and Enter confirms menus. The keyboard badge hides when a CV producer replaces the source. Camera menus use a small wave with either hand raised above the shoulder: move it sideways and back. Lower your hands before waving again for the next screen. Vertical flaps, a single sweep and holding a hand up do not confirm. Waves use the existing `selectCount` field. A fresh jump or the optional `select` field also remains accepted. Holding Space does not generate repeated flaps.
 
 Keyboard confirmation also uses the optional monotonic `selectCount` field so a short Enter press is not missed between render frames. Existing CV producers do not need to provide it.
 

@@ -28,7 +28,7 @@ function begin() {
       `flapCount ${s.flapCount} | flapRate ${f(s.flapRate)}/s | flapping ${s.flapping} | flapVelocity ${f(s.flapVelocity)}`,
       `strafe ${f(s.strafe)} | left ${s.strafeLeft} | right ${s.strafeRight}`,
       `jump ${s.jump} | squat ${s.squat}`,
-      `swipes (selectCount) ${s.selectCount ?? 0}`,
+      `waves (selectCount) ${s.selectCount ?? 0}`,
     ].join('\n');
   }, 100);
 }

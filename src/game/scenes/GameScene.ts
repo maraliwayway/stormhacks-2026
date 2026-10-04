@@ -226,7 +226,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private confirmHint(): string {
-    return inputManager.getState() === keyboard.getState() ? 'Jump or Enter' : 'Swipe your right arm';
+    return inputManager.getState() === keyboard.getState() ? 'Jump or Enter' : 'Wave one raised hand';
   }
 
   private menuButton(): void {
