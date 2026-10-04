@@ -20,11 +20,22 @@ npm run build
 npm run preview
 ```
 
+For browser integration checks:
+
+```sh
+npx playwright install chromium
+npm run test:browser
+```
+
+The browser test starts its own local server and checks start, flight, restart, shared input, tracking pause, and responsive sizing. It saves screenshots under `test-results`. Enable worms through `.env.local` to exercise the optional pickup check too.
+
 ## Team integration
 
 `src/input/types.ts` defines the shared `InputState` and `InputSource` contract. Input producers register with `inputManager.setSource(source)`. Gameplay reads `inputManager.getState()` every frame without waiting on the camera or network.
 
 Keyboard fallback starts by default. Space records one flap per press, arrows provide strafe/jump/squat, and Enter confirms menus. The keyboard badge hides when a CV producer replaces the source. CV menu confirmation can use a new flap count or the optional `select` field. Holding Space does not generate repeated flaps.
+
+Keyboard confirmation also uses the optional monotonic `selectCount` field so a short Enter press is not missed between render frames. Existing CV producers do not need to provide it.
 
 `src/game/events.ts` exposes typed `gameEvents.on(name, callback)` subscriptions. It returns an unsubscribe function. Events include `death`, `near_miss`, `new_best`, `milestone`, and `run_end`. Listener failures do not interrupt gameplay.
 
