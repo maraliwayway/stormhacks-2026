@@ -43,4 +43,5 @@ export class CounterStore {
   }
 }
 
+// Keys keep the original project name so existing best scores survive the rename.
 export const bestScore = new CounterStore("flappy-arms.best-altitude");

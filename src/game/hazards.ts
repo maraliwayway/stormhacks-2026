@@ -48,7 +48,7 @@ export interface HazardAdvanceOptions {
   levelId?: Level["id"];
   /** Bird centre in world pixels; defaults to the middle of the viewport. */
   birdY?: number;
-  /** Consume rows without spawning while a cat or Heaven reserves the map. */
+  /** Consume rows without spawning new obstacles while a cat holds the map. Existing obstacles stay. */
   suppressObstacles?: boolean;
 }
 
@@ -68,15 +68,12 @@ export class HazardField {
       suppressObstacles = false,
       levelId = "kitchen",
     } = options;
-    if (suppressObstacles) {
-      this.items = [];
-    } else {
-      this.items = this.items
-        .filter(
-          (hazard) => hazard.y - hazard.height / 2 < cameraY + FLIGHT.height,
-        )
-        .slice(0, 1);
-    }
+    // Obstacles only leave by scrolling off the bottom. Map changes and cats never delete them.
+    this.items = this.items
+      .filter(
+        (hazard) => hazard.y - hazard.height / 2 < cameraY + FLIGHT.height,
+      )
+      .slice(0, 1);
 
     // Look past the reaction gap to find a safe row even after a camera jump.
     const highestSafeEdge = birdY - BIRD_BOX.height / 2 - HAZARD_MIN_LEAD;

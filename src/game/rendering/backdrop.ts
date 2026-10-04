@@ -48,31 +48,25 @@ export function drawBackdrop(
 ): void {
   graphics.clear();
   if (levelId === "heaven") {
-    graphics.fillStyle(0xc6e4f4).fillRect(0, 0, 1280, 720);
-    // A golden halo and layered clouds make Heaven a playable sky map.
-    graphics.fillStyle(0xfff3c9, 0.65).fillCircle(1010, 160, 100);
-    graphics.lineStyle(5, 0xe7bd67, 0.8).strokeEllipse(1010, 160, 140, 46);
+    // Flat sky and two layers of plain white clouds keep Heaven clean and readable.
+    graphics.fillStyle(0xcfe8f4).fillRect(0, 0, 1280, 720);
     for (let layer = 0; layer < 2; layer++) {
       const offset = (((-cameraY * (0.2 + layer * 0.15)) % 260) + 260) % 260;
+      const color = layer === 0 ? 0xe6f3fa : 0xffffff;
       for (let row = -1; row < 4; row++) {
-        const y = row * 260 + offset;
+        const y = row * 260 + offset + layer * 65;
         for (let column = 0; column < 3; column++) {
-          const x = 220 + column * 370 + (row % 2) * 60;
+          const x = 220 + column * 370 + (row % 2) * 60 + layer * 90;
           graphics
-            .fillStyle(0xffffff, layer === 0 ? 0.45 : 0.9)
-            .fillEllipse(x, y + layer * 65, 210, 52)
-            .fillCircle(x - 45, y + layer * 65 - 18, 34)
-            .fillCircle(x + 10, y + layer * 65 - 30, 46)
-            .fillCircle(x + 65, y + layer * 65 - 12, 30);
+            .fillStyle(color)
+            .fillRoundedRect(x - 85, y - 6, 170, 34, 17)
+            .fillCircle(x - 40, y, 30)
+            .fillCircle(x + 8, y - 14, 40)
+            .fillCircle(x + 52, y + 2, 28);
         }
       }
     }
-    graphics.lineStyle(2, 0xe7bd67, 0.7);
-    for (let i = 0; i < 9; i++) {
-      const x = 150 + i * 120;
-      const y = ((((i * 83 - cameraY * 0.1) % 650) + 650) % 650) + 30;
-      graphics.lineBetween(x - 5, y, x + 5, y).lineBetween(x, y - 5, x, y + 5);
-    }
+    graphics.lineStyle(5, 0xe7bd67).strokeEllipse(1010, 150, 140, 40);
     return;
   }
   // A light wash separates moving hazards from the detailed background illustration.

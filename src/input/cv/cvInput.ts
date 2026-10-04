@@ -49,15 +49,6 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
     calibrator.start();
   };
 
-  const onCalibrationKey = (event: KeyboardEvent) => {
-    if (event.metaKey || event.ctrlKey || event.altKey) {
-      return;
-    }
-    if (event.key === "c" || event.key === "C") {
-      recalibrate();
-    }
-  };
-
   return {
     getState: () => {
       // Expire the last pose before the next game tick, even after a stalled tab.
@@ -112,13 +103,11 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
         state.calibrated = calibrationStatus.phase === "done";
       });
       calibrator.start();
-      window.addEventListener("keydown", onCalibrationKey);
     },
 
     stop() {
       unsubscribe?.();
       unsubscribe = null;
-      window.removeEventListener("keydown", onCalibrationKey);
       stopTracker();
       detector.reset();
       Object.assign(state, EMPTY_INPUT);

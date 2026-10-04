@@ -3,7 +3,7 @@ import { getLatest } from "./poseTracker";
 import { previewBounds } from "./previewBounds";
 
 /**
- * Canvas overlay: skeleton, FPS, inference time and pose latency. Toggle with `D`.
+ * Canvas overlay: skeleton, FPS, inference time and pose latency. Shown only with `?debug`.
  * Plain canvas, so it works over the test page's <video> or on top of Phaser.
  * Landmarks are drawn mirrored (x flipped) to match a mirrored video.
  */
@@ -91,15 +91,6 @@ export function createDebugOverlay(
     );
   };
 
-  const onKey = (event: KeyboardEvent) => {
-    if (event.metaKey || event.ctrlKey || event.altKey) {
-      return;
-    }
-    if (event.key === "d" || event.key === "D") {
-      visible = !visible;
-    }
-  };
-  window.addEventListener("keydown", onKey);
   animationFrameId = requestAnimationFrame(draw);
 
   return {
@@ -112,7 +103,6 @@ export function createDebugOverlay(
     },
     destroy() {
       cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("keydown", onKey);
       canvas.remove();
     },
   };

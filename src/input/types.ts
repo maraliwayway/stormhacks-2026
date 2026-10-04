@@ -1,6 +1,6 @@
 /**
  * Snapshot of player input, read by the game every frame.
- * Produced by CV (cv/cvInput.ts) or keyboard (keyboardInput.ts).
+ * Produced by the camera (cv/cvInput.ts); tests drive it with scripted poses.
  * Plain data only: no methods, no React state.
  */
 export interface InputState {
@@ -10,7 +10,6 @@ export interface InputState {
   /**
    * Flap intensity, 0 when idle.
    * CV: smoothed vertical wrist speed in shoulder-widths per second.
-   * Keyboard: fixed value (e.g. 1) while Space is held.
    */
   flapVelocity: number;
 
@@ -28,14 +27,13 @@ export interface InputState {
    * Analog strafe, -1 (fully left) .. 0 (centre) .. +1 (fully right).
    * Camera: the head's side zone in the mirrored preview. The centre is inert.
    * Head steering uses turn counters to preserve short movements between render frames.
-   * Keyboard: -1 / 0 / +1.
    */
   strafe: number;
 
-  /** True while the camera head is in the left zone, or the left key is held. */
+  /** True while the camera head is in the left zone. */
   strafeLeft: boolean;
 
-  /** True while the camera head is in the right zone, or the right key is held. */
+  /** True while the camera head is in the right zone. */
   strafeRight: boolean;
 
   /** True while in the jump pose. */
@@ -44,14 +42,14 @@ export interface InputState {
   /** True while in the squat pose. */
   squat: boolean;
 
-  /** False when no body is detected. Keyboard source: always true. */
+  /** False when no body is detected. */
   tracking: boolean;
 
-  /** True once calibration baseline is captured. Keyboard source: always true. */
+  /** True once calibration baseline is captured. */
   calibrated: boolean;
   /** Optional menu confirmation. Older gesture producers remain compatible. */
   select?: boolean;
-  /** Optional monotonic confirmations, so short key presses survive a render frame. */
+  /** Monotonic prayer contacts, so a brief one survives between render frames. */
   selectCount?: number;
   /** Camera menus use hands-together contacts; legacy swipe producers remain compatible. */
   menuConfirmMode?: "clap" | "swipe" | "press";

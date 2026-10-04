@@ -1,10 +1,10 @@
 import Phaser from "phaser";
+import { audio } from "../../audio/audio";
 import { cameraPanel } from "../../input/cv/cameraPanel";
-import { keyboard } from "../../input/defaultInput";
 import { inputManager } from "../../input/inputManager";
 import type { InputState } from "../../input/types";
 import { gameUi } from "../../ui/gameUi";
-import { EnemyField } from "../enemies";
+import { EnemyField, WARNING_SECONDS } from "../enemies";
 import { gameEvents } from "../events";
 import { FLIGHT, Flight } from "../flight";
 import { BIRD_BOX, HazardField } from "../hazards";
@@ -12,7 +12,7 @@ import { levelAt } from "../levels";
 import { MenuConfirm } from "../menuConfirm";
 import { IllustratedBackdrop, drawBackdrop } from "../rendering/backdrop";
 import { ensureBirdAnimation } from "../rendering/bird";
-import { drawEnemies } from "../rendering/enemies";
+import { CatRenderer } from "../rendering/enemies";
 import { HazardRenderer } from "../rendering/hazards";
 import { bestScore } from "../storage";
 import { installVfx } from "../vfx";
@@ -33,12 +33,13 @@ export class GameScene extends Phaser.Scene {
   private backdrop!: Phaser.GameObjects.Graphics;
   private illustratedBackdrop!: IllustratedBackdrop;
   private hazardRenderer!: HazardRenderer;
-  private enemyArt!: Phaser.GameObjects.Graphics;
+  private cat!: CatRenderer;
+  private catAge: number | null = null;
+  private lane = 1;
   private worms!: WormField;
   private wormArt!: Phaser.GameObjects.Graphics;
   private lastMilestone = 0;
   private runFlaps = 0;
-  private overBaseline = 0;
   private confirm!: MenuConfirm;
   private level = levelAt(0);
   private previousBest = 0;
@@ -67,7 +68,7 @@ export class GameScene extends Phaser.Scene {
     this.createWorld();
     this.createBird();
     gameUi.showFlight();
-    this.updateControlHint(inputManager.getState());
+    gameUi.showWorld(this.level.id);
     this.updateHud();
     this.drawBackdrop();
     gameEvents.emit("level_start", { level: this.level.id, altitude: 0 });
@@ -116,12 +117,14 @@ export class GameScene extends Phaser.Scene {
       this.add.graphics().setDepth(4),
     );
     this.enemies = new EnemyField();
-    this.enemyArt = this.add.graphics().setDepth(6);
+    this.cat = new CatRenderer(this, this.add.graphics().setDepth(6));
+    this.catAge = null;
     this.worms = new WormField();
     this.wormArt = this.add.graphics().setDepth(8);
     const input = inputManager.getState();
     this.flight = new Flight(input.flapCount, input);
     this.flight.velocity = -FLIGHT.impulse;
+    this.lane = this.flight.selectedLane;
     this.cameras.main.setScroll(0, 0);
     this.illustratedBackdrop = new IllustratedBackdrop(this);
     this.backdrop = this.add.graphics().setScrollFactor(0).setDepth(-10);
@@ -130,16 +133,17 @@ export class GameScene extends Phaser.Scene {
       const marker = this.add
         .graphics()
         .setDepth(2)
-        .lineStyle(2, 0x4e7f62, 0.55);
+        .lineStyle(3, 0x24323a, 0.6);
       for (let x = 70; x < 1210; x += 40) {
         marker.lineBetween(x, y, x + 22, y);
       }
       this.add
-        .text(82, y - 26, "PERSONAL BEST", {
-          fontSize: "14px",
-          color: "#3d6753",
-          backgroundColor: "#fffbed",
-          padding: { x: 8, y: 4 },
+        .text(82, y - 34, "your best", {
+          fontFamily: '"Patrick Hand", sans-serif',
+          fontSize: "24px",
+          color: "#24323a",
+          backgroundColor: "#fbf8ef",
+          padding: { x: 10, y: 2 },
         })
         .setDepth(3);
     }
@@ -161,6 +165,8 @@ export class GameScene extends Phaser.Scene {
     this.pausedAt = this.time.now;
     this.bird.anims.pause();
     this.tweens.pauseAll();
+    audio.duck(true);
+    audio.play("pause");
     cameraPanel.setMode("hidden");
     gameUi.showPause();
   }
@@ -175,6 +181,8 @@ export class GameScene extends Phaser.Scene {
     this.confirm = new MenuConfirm(inputManager.getState());
     this.bird.anims.resume();
     this.tweens.resumeAll();
+    audio.duck(false);
+    audio.play("resume");
     cameraPanel.setMode("mini");
     gameUi.hideDialog();
   }
@@ -185,18 +193,17 @@ export class GameScene extends Phaser.Scene {
       this.inputSource = inputManager.getSource();
       this.flight.update({ ...input, tracking: false }, 0);
       this.confirm = new MenuConfirm(input);
-      this.overBaseline = input.flapCount;
     }
-    gameUi.updateInput(input, input !== keyboard.getState());
+    gameUi.updateInput(input);
     const confirmed = this.confirm.read(input);
     if (this.phase === "over") {
-      this.handleGameOverInput(input, confirmed);
+      this.handleGameOverInput(confirmed);
       return;
     }
     if (this.paused) {
       // Consume input counts without movement; flaps behind the dialog cannot replay.
       this.flight.update({ ...input, tracking: false }, 0);
-      if (confirmed && input !== keyboard.getState()) {
+      if (confirmed) {
         this.resumeRun();
       }
       return;
@@ -210,12 +217,12 @@ export class GameScene extends Phaser.Scene {
       (this.time.now < this.slowUntil ? SLOW_MOTION_FACTOR : 1);
     this.updateFlight(input, movementSeconds, elapsedSeconds);
     this.updateScore();
-    this.updateControlHint(input);
+    // The HUD stays quiet; threats set a hint only while the player must act.
+    this.hint = "";
     this.updateLevel();
     this.drawBackdrop();
-    if (this.level.id === "heaven") {
-      this.clearHeavenThreats();
-    } else if (input.tracking && input.calibrated) {
+    // Every world, Heaven included, keeps its obstacles and cats through a map change.
+    if (input.tracking && input.calibrated) {
       if (!this.updateThreats(elapsedSeconds)) {
         this.updateHud();
         return;
@@ -230,25 +237,8 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private handleGameOverInput(
-    input: Readonly<InputState>,
-    confirmed: boolean,
-  ): void {
+  private handleGameOverInput(confirmed: boolean): void {
     if (confirmed) {
-      this.scene.start("Boot");
-      return;
-    }
-    if (input.menuConfirmMode === "clap" || input.menuConfirmMode === "swipe") {
-      return;
-    }
-    if (input.flapCount < this.overBaseline) {
-      this.overBaseline = input.flapCount;
-    }
-    if (
-      input.tracking &&
-      input.calibrated &&
-      input.flapCount > this.overBaseline
-    ) {
       this.scene.restart();
     }
   }
@@ -270,6 +260,10 @@ export class GameScene extends Phaser.Scene {
         y: this.flight.y,
         count: flaps,
       });
+    }
+    if (this.flight.selectedLane !== this.lane) {
+      this.lane = this.flight.selectedLane;
+      gameEvents.emit("lane_change", { lane: this.lane });
     }
     this.bird.setPosition(this.flight.x, this.flight.y);
     this.bird.setAngle(Phaser.Math.Clamp(this.flight.velocity / 25, -18, 20));
@@ -293,22 +287,10 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private updateControlHint(input: Readonly<InputState>): void {
-    this.hint =
-      !input.tracking || !input.calibrated
-        ? "Flight paused. Return to the camera or choose Keyboard."
-        : input === keyboard.getState()
-          ? "Tap Space to flap. Tap left / right to change lane."
-          : input.steeringMode === "head" && input.headPosition == null
-            ? "Small flaps to rise. Keep your head in view to turn."
-            : "Small flaps to rise. Head left / right to turn; center to stay.";
-  }
-
   private updateHud(): void {
     gameUi.updateHud(
       this.flight.altitude,
       Math.max(this.previousBest, this.flight.altitude),
-      this.level,
       this.hint,
       WORMS_ENABLED ? wormBalance.get() : null,
     );
@@ -319,25 +301,12 @@ export class GameScene extends Phaser.Scene {
     if (nextLevel.start !== this.level.start) {
       this.level = nextLevel;
       this.flight.velocity = Math.min(this.flight.velocity, -FLIGHT.impulse);
+      gameUi.showWorld(nextLevel.id);
       gameEvents.emit("level_start", {
         level: nextLevel.id,
         altitude: this.flight.altitude,
       });
     }
-  }
-
-  private clearHeavenThreats(): void {
-    this.hazards.advance(this.flight.cameraY, {
-      birdY: this.flight.y,
-      suppressObstacles: true,
-    });
-    this.hazards.items = [];
-    this.enemies.items = [];
-    this.worms.items = [];
-    this.hazardRenderer.clear();
-    this.enemyArt.clear();
-    this.wormArt.clear();
-    this.hint = "A little room to breathe. Keep those wings moving.";
   }
 
   /** Returns false when a collision has ended the run. */
@@ -362,6 +331,7 @@ export class GameScene extends Phaser.Scene {
       return false;
     }
     this.emitNearMisses(hazardResult.misses.length);
+    this.announceCat();
     const enemyResult = this.enemies.check(birdBox);
     this.drawEnemies();
     if (enemyResult.hit) {
@@ -370,6 +340,23 @@ export class GameScene extends Phaser.Scene {
     }
     this.emitNearMisses(enemyResult.misses.length);
     return true;
+  }
+
+  /** Tells listeners (sound, voice) when a cat appears and when its paw comes down. */
+  private announceCat(): void {
+    const cat = this.enemies.items[0];
+    if (cat && (this.catAge === null || cat.age < this.catAge)) {
+      gameEvents.emit("cat_warning", { lane: cat.lane });
+    }
+    if (
+      cat &&
+      this.catAge !== null &&
+      this.catAge < WARNING_SECONDS &&
+      cat.age >= WARNING_SECONDS
+    ) {
+      gameEvents.emit("cat_strike", { lane: cat.lane });
+    }
+    this.catAge = cat?.age ?? null;
   }
 
   private emitNearMisses(count: number): void {
@@ -437,24 +424,23 @@ export class GameScene extends Phaser.Scene {
 
   private showGameOver(): void {
     this.phase = "over";
-    this.overBaseline = inputManager.getState().flapCount;
+    audio.play("gameOver");
     this.confirm = new MenuConfirm(inputManager.getState());
     cameraPanel.setMode("hidden");
-    gameUi.showResults({
-      altitude: this.flight.altitude,
-      best: bestScore.get(),
-      flaps: this.runFlaps,
-      newBest: Math.floor(this.flight.altitude) > Math.floor(this.previousBest),
-      reason: this.reason,
-    });
+    gameUi.showResults(
+      {
+        altitude: this.flight.altitude,
+        best: bestScore.get(),
+        flaps: this.runFlaps,
+        newBest:
+          Math.floor(this.flight.altitude) > Math.floor(this.previousBest),
+        reason: this.reason,
+      },
+      this.level.id,
+    );
   }
 
   private drawHazards(): void {
-    const upcoming = this.hazards.items.find((hazard) => !hazard.passed);
-    if (upcoming) {
-      const laneIndex = FLIGHT.lanes.findIndex((laneX) => laneX === upcoming.x);
-      this.hint = `Obstacle ahead in the ${["left", "centre", "right"][laneIndex]} lane`;
-    }
     this.hazardRenderer.draw(
       this.hazards.items,
       this.flight.cameraY,
@@ -464,9 +450,9 @@ export class GameScene extends Phaser.Scene {
 
   private drawEnemies(): void {
     if (this.enemies.items.length > 0) {
-      this.hint = "CAT! Leave the marked lane and keep flapping";
+      this.hint = "Cat! Get out of its lane";
     }
-    drawEnemies(this.enemyArt, this.enemies.items, this.flight.cameraY);
+    this.cat.draw(this.enemies.items, this.flight.cameraY);
   }
 
   private updateWorms(): void {

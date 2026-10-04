@@ -1,9 +1,14 @@
 import type { CalibrationStatus } from "./calibration";
 
+const INK = "#24323a";
+const PAPER = "#fbf8ef";
+const GO = "#7cb46b";
+export const HAND_FONT = '"Patrick Hand", "Comic Sans MS", sans-serif';
+
 /**
- * Upper-body guide: a silhouette box that turns green when the shoulders are in
- * frame, plus a progress bar while capturing. Plain canvas so it can sit over the test
- * video or over Phaser. `getStatus` returns null to hide it.
+ * Calibration prompt: one line of handwritten text and a fill bar while capturing.
+ * Plain canvas so it can sit over the test video or the bird avatar. `getStatus`
+ * returns null to hide it.
  */
 export function createCalibrationGuide(
   host: HTMLElement,
@@ -27,56 +32,36 @@ export function createCalibrationGuide(
     if (!status || status.phase === "idle" || status.phase === "done") {
       return;
     }
-
-    const color = status.bodyInFrame ? "#00e676" : "#ff5252";
-    const boxWidth = width * 0.65;
-    const boxHeight = height * 0.75;
-    const x = (width - boxWidth) / 2;
-    const y = (height - boxHeight) / 2;
-
-    context.lineWidth = 4;
-    context.strokeStyle = color;
-    context.setLineDash([14, 10]);
-    context.strokeRect(x, y, boxWidth, boxHeight);
-    context.setLineDash([]);
-
-    // simple head + body silhouette hint
-    context.globalAlpha = 0.25;
-    context.fillStyle = color;
-    context.beginPath();
-    context.arc(
-      width / 2,
-      y + boxHeight * 0.12,
-      boxHeight * 0.06,
-      0,
-      Math.PI * 2,
-    );
-    context.fill();
-    context.fillRect(
-      width / 2 - boxWidth * 0.3,
-      y + boxHeight * 0.2,
-      boxWidth * 0.6,
-      boxHeight * 0.45,
-    );
-    context.globalAlpha = 1;
-
-    context.font = "bold 22px sans-serif";
-    context.textAlign = "center";
-    context.fillStyle = "#fff";
-    context.strokeStyle = "#000";
-    context.lineWidth = 4;
     const message =
       status.phase === "capturing"
         ? "Hold still..."
-        : (getPrompt() ?? "Keep your upper body in view");
-    context.strokeText(message, width / 2, height - 36);
-    context.fillText(message, width / 2, height - 36);
-
+        : (getPrompt() ??
+          (status.bodyInFrame
+            ? "Hold still..."
+            : "Step back so your shoulders fit"));
+    context.font = `30px ${HAND_FONT}`;
+    const textWidth = context.measureText(message).width;
+    const pillWidth = Math.max(260, textWidth + 48);
+    const pillX = (width - pillWidth) / 2;
+    const pillY = height - 78;
+    context.fillStyle = PAPER;
+    context.strokeStyle = INK;
+    context.lineWidth = 3;
+    context.beginPath();
+    context.roundRect(pillX, pillY, pillWidth, 58, 12);
+    context.fill();
+    context.stroke();
+    context.fillStyle = INK;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(message, width / 2, pillY + 25);
     if (status.phase === "capturing") {
-      context.fillStyle = "rgba(0,0,0,0.5)";
-      context.fillRect(x, height - 24, boxWidth, 10);
-      context.fillStyle = color;
-      context.fillRect(x, height - 24, boxWidth * status.progress, 10);
+      const barX = pillX + 18;
+      const barWidth = pillWidth - 36;
+      context.fillStyle = "#e3e8ec";
+      context.fillRect(barX, pillY + 44, barWidth, 6);
+      context.fillStyle = GO;
+      context.fillRect(barX, pillY + 44, barWidth * status.progress, 6);
     }
   };
   animationFrameId = requestAnimationFrame(draw);
