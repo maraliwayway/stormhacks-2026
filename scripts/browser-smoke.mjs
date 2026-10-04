@@ -160,8 +160,46 @@ try {
   await page.waitForFunction(() => window.testGame.scene.isActive('Boot'));
   await page.waitForTimeout(100);
   assert.equal(await page.evaluate(() => window.testGame.scene.getScene('Boot').stage), 'menu');
+  // Isolate the authored encounter while running the real scene and renderer.
+  await page.evaluate(async () => {
+    window.testInput = { ...window.testEmpty, tracking: true, calibrated: true };
+    window.testGame.scene.start('Game');
+  });
+  await page.waitForFunction(() => window.testGame.scene.isActive('Game') && window.testGame.scene.getScene('Game').phase === 'playing');
+  await page.evaluate(() => {
+    const scene = window.testGame.scene.getScene('Game');
+    window.testGame.scene.pause('Game');
+    scene.flight.update = () => 0;
+    scene.flight.altitude = 20;
+    scene.flight.x = 640;
+    scene.hazards.advance = () => {};
+    scene.hazards.items = [];
+    scene.update(0, 0);
+  });
+  const catStep = async (frames) => page.evaluate(frames => {
+    const scene = window.testGame.scene.getScene('Game');
+    for (let i = 0; i < frames; i++) scene.update(0, 25);
+    return { phase: scene.phase, age: scene.enemies.items[0]?.age, x: scene.enemies.items[0]?.x };
+  }, frames);
+  assert.equal((await catStep(20)).phase, 'playing');
+  await page.screenshot({ path: 'test-results/cat-warning.png' });
+  const catAge = await page.evaluate(() => {
+    window.testInput.tracking = false;
+    return window.testGame.scene.getScene('Game').enemies.items[0].age;
+  });
+  assert.equal((await catStep(20)).age, catAge);
+  await page.evaluate(() => {
+    window.testInput.tracking = true;
+    window.testGame.scene.getScene('Game').flight.x = 340;
+  });
+  const dodged = await catStep(21);
+  assert.equal(dodged.phase, 'playing');
+  assert.equal(dodged.x, 640);
+  await page.screenshot({ path: 'test-results/cat-paw.png' });
+  await page.evaluate(() => { window.testGame.scene.getScene('Game').flight.x = 640; });
+  assert.equal((await catStep(1)).phase, 'dying');
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, victory, menu return, held jump protection, no runtime errors.');
+  console.log('Browser checks passed: canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, victory, menu return, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, no runtime errors.');
 } finally {
   await browser?.close();
   await server.close();

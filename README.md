@@ -33,7 +33,7 @@ The browser test starts its own local server and checks start, flight, restart, 
 
 `src/input/types.ts` defines the shared `InputState` and `InputSource` contract. Input producers register with `inputManager.setSource(source)`. Gameplay reads `inputManager.getState()` every frame without waiting on the camera or network.
 
-Keyboard fallback starts by default. Space records one flap per press, arrows provide strafe/jump/squat, and Enter confirms menus. The keyboard badge hides when a CV producer replaces the source. CV menu confirmation can use a new flap count or the optional `select` field. Holding Space does not generate repeated flaps.
+Keyboard fallback starts by default. Space records one flap per press, arrows provide strafe/jump/squat, and Enter confirms menus. The keyboard badge hides when a CV producer replaces the source. CV menu confirmation uses a fresh jump or the optional `select` field. Holding Space does not generate repeated flaps.
 
 Keyboard confirmation also uses the optional monotonic `selectCount` field so a short Enter press is not missed between render frames. Existing CV producers do not need to provide it.
 
@@ -41,7 +41,7 @@ Keyboard confirmation also uses the optional monotonic `selectCount` field so a 
 
 Dev 3 can register `setScoreSink` from `src/net/scoreSync.ts` to send finished runs to the leaderboard. No backend endpoint is configured yet. Best altitude stays available locally when the backend or browser storage is unavailable.
 
-Dev 1 can call `setDifficulty` in `src/game/difficulty.ts` with `enemyEveryMetres`, `enemySpeed`, and weights for `static`, `sweeper`, and `diver`. The default mix runs locally until adaptive tuning lands. Enemies warn for 650 ms before moving or becoming collidable.
+Dev 1 can call `setDifficulty` in `src/game/difficulty.ts` with `enemyEveryMetres`, `enemySpeed`, and weights for `static`, `sweeper`, and `diver`. Cat encounters use the frequency setting with a minimum of 24 metres and six seconds between warnings. The legacy speed/mix fields remain accepted for producer compatibility, but do not affect the cat: its warning always lasts one second. The face marks and locks the bird's current lane, then disappears as a paw strikes that lane for 350 ms. Leave the marked lane to survive; climbing alone does not evade the strike. Tracking loss freezes the encounter.
 
 ## Optional worm pickups
 

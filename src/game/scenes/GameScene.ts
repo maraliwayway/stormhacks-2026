@@ -5,7 +5,7 @@ import { Flight, FLIGHT } from '../flight';
 import { gameEvents } from '../events';
 import { BIRD_BOX, HazardField } from '../hazards';
 import { bestScore } from '../storage';
-import { EnemyField, WARNING_SECONDS } from '../enemies';
+import { EnemyField, WARNING_SECONDS, STRIKE_SECONDS, RETREAT_SECONDS } from '../enemies';
 import { installVfx } from '../vfx';
 import { WormField, wormBalance } from '../worms';
 import { MenuConfirm } from '../menuConfirm';
@@ -163,7 +163,8 @@ export class GameScene extends Phaser.Scene {
       for (const _miss of result.misses) {
         gameEvents.emit('near_miss', { altitude: this.flight.altitude, x: this.flight.x, y: this.flight.y });
       }
-      this.enemies.tick(this.flight.altitude, this.flight.cameraY, dt);
+      this.enemies.tick(this.flight.altitude, this.flight.cameraY, Math.min(delta, 50) / 1000, undefined,
+        { x: this.flight.x, y: this.flight.y, ...BIRD_BOX });
       const enemyResult = this.enemies.check({ x: this.flight.x, y: this.flight.y, ...BIRD_BOX });
       this.drawEnemies();
       if (enemyResult.hit) { this.finishRun(enemyResult.hit.kind); return; }
@@ -266,16 +267,46 @@ export class GameScene extends Phaser.Scene {
   private drawEnemies(): void {
     const g = this.enemyArt;
     g.clear();
+    if (this.enemies.items.length) this.hint.setText('CAT! Leave the marked lane and keep flapping');
     for (const e of this.enemies.items) {
       const warning = e.age < WARNING_SECONDS;
-      g.fillStyle(warning ? 0xffd46b : e.kind === 'diver' ? 0xba5a55 : 0x965477, warning ? 0.65 : 1);
-      g.fillEllipse(e.x, e.y, e.width, e.height);
-      g.fillStyle(0xfff3db).fillCircle(e.x - 14, e.y - 6, 10).fillCircle(e.x + 14, e.y - 6, 10);
-      g.fillStyle(0x193c45).fillCircle(e.x - 14, e.y - 4, 4).fillCircle(e.x + 14, e.y - 4, 4);
+      const strike = e.age < WARNING_SECONDS + STRIKE_SECONDS;
+      const top = this.flight.cameraY;
+      const x = e.x;
+      const y = top + e.faceOffset;
+      const alpha = warning || strike ? 1 : Math.max(0, 1 -
+        (e.age - WARNING_SECONDS - STRIKE_SECONDS) / RETREAT_SECONDS);
+      g.fillStyle(warning ? 0xffd46b : 0xe77b66, warning ? 0.18 : 0.28 * alpha)
+        .fillRect(x - 130, top, 260, FLIGHT.height);
+      g.lineStyle(4, warning ? 0xb7782e : 0xba5a55, alpha);
+      g.lineBetween(x - 130, top, x - 130, top + FLIGHT.height);
+      g.lineBetween(x + 130, top, x + 130, top + FLIGHT.height);
       if (warning) {
-        g.lineStyle(3, 0xb7782e, 0.7).strokeCircle(e.x, e.y, 58);
-        g.lineBetween(e.x, e.y - 94, e.x, e.y - 76);
-        g.fillStyle(0xb7782e).fillCircle(e.x, e.y - 68, 3);
+        // Face and ears disappear completely when the paw arrives.
+        g.fillStyle(0xd79b61).fillTriangle(x - 70, y - 20, x - 68, y - 95, x - 20, y - 48)
+          .fillTriangle(x + 70, y - 20, x + 68, y - 95, x + 20, y - 48);
+        g.fillEllipse(x, y, 150, 120);
+        g.lineStyle(4, 0x173e47).strokeEllipse(x, y, 150, 120);
+        g.fillStyle(0xf8d3ba).fillTriangle(x - 58, y - 47, x - 58, y - 77, x - 34, y - 49)
+          .fillTriangle(x + 58, y - 47, x + 58, y - 77, x + 34, y - 49);
+        g.fillStyle(0xfff3db).fillEllipse(x - 27, y - 12, 30, 36).fillEllipse(x + 27, y - 12, 30, 36);
+        g.fillStyle(0x173e47).fillEllipse(x - 27, y - 12, 8, 26).fillEllipse(x + 27, y - 12, 8, 26);
+        g.fillStyle(0xba5a55).fillTriangle(x - 9, y + 12, x + 9, y + 12, x, y + 23);
+        g.lineStyle(3, 0x173e47).lineBetween(x, y + 23, x, y + 32);
+        for (const side of [-1, 1]) {
+          g.lineBetween(x + side * 35, y + 18, x + side * 85, y + 8);
+          g.lineBetween(x + side * 35, y + 29, x + side * 85, y + 35);
+        }
+        // The ring fills during the one second warning.
+        g.lineStyle(6, 0xb7782e).beginPath().arc(x, y, 90, -Math.PI / 2,
+          -Math.PI / 2 + Math.PI * 2 * Math.min(1, e.age / WARNING_SECONDS), false).strokePath();
+      } else {
+        g.fillStyle(0xd79b61, alpha).fillRoundedRect(x - 48, top - 40, 96, e.faceOffset + 40, 25);
+        g.fillEllipse(x, y + 12, 172, 140);
+        for (const dx of [-60, -20, 20, 60]) g.fillEllipse(x + dx, y - 48, 45, 60);
+        g.lineStyle(4, 0x173e47, alpha).strokeEllipse(x, y + 12, 172, 140);
+        g.fillStyle(0xe6a6a0, alpha).fillEllipse(x, y + 26, 80, 60);
+        for (const dx of [-60, -20, 20, 60]) g.fillEllipse(x + dx, y - 45, 22, 28);
       }
     }
   }
