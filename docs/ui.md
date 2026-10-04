@@ -15,6 +15,7 @@ The UI layer has the same 16:9 box as the Phaser canvas and is sized in containe
 | Screen | Contents |
 | --- | --- |
 | Title | Logo and tagline centred above the mirror on a flat sky with drifting clouds and two faint pigeons, the camera "mirror" in the centre, four doodled rules (left) and the best score (right), both level with the middle of the mirror, sound and fullscreen buttons |
+| Warm up | Opened by "Warm up first" under the rules: a one-minute shoulder routine, a safety note, and links to the NHS warm-up guide (with videos), NHS neck and shoulder stretches, and a YouTube search for warm-up videos, each opening in a new tab. Palms together or "I’m warmed up" closes it |
 | Flight | Score and best (top left), sound and pause (top right), the player's bird (bottom right), world banner on each map change, a red pill only while a cat threatens |
 | Lost tracking | A card with the camera mirror and a Recalibrate button |
 | Pause | "paused", palms-together hint, Resume, Quit |
