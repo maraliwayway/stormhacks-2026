@@ -5,6 +5,60 @@ import { FLIGHT, Flight } from "./flight";
 const active = () => ({ ...EMPTY_INPUT, tracking: true, calibrated: true });
 
 describe("flight physics", () => {
+  it("head steering ignores swipes and turns even while arms are moving", () => {
+    const flight = new Flight();
+    const input = {
+      ...active(),
+      steeringMode: "head" as const,
+      strafe: -1,
+      swipeLeftCount: 1,
+      swipeInProgress: true,
+      turnLeftCount: 0,
+      turnRightCount: 0,
+    };
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[1]);
+    input.turnLeftCount++;
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+    input.strafe = 0;
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+    input.turnRightCount++;
+    input.tracking = false;
+    flight.update(input, 0.2);
+    input.tracking = true;
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+  });
+  it("directional swipes move one lane without repeats or replaying the menu swipe", () => {
+    const input = { ...active(), swipeLeftCount: 0, swipeRightCount: 2 };
+    const flight = new Flight(0, input);
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[1]);
+    input.swipeLeftCount++;
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+    for (let frame = 0; frame < 30; frame++) {
+      flight.update(input, 1 / 60);
+    }
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+    input.swipeRightCount++;
+    input.strafe = 1;
+    flight.update(input, 0.2);
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[1]);
+    input.tracking = false;
+    input.swipeRightCount++;
+    flight.update(input, 0.2);
+    input.tracking = true;
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[1]);
+    input.swipeRightCount = 0;
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[1]);
+  });
+
   it("a small tilt moves exactly one lane, settles quickly, and does not repeat while held", () => {
     const flight = new Flight();
     const input = { ...active(), strafe: -0.25 };

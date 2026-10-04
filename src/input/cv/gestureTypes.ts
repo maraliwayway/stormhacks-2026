@@ -2,6 +2,8 @@
 export interface Point {
   x: number;
   y: number;
+  visibility?: number;
+  presence?: number;
 }
 
 /**
@@ -15,6 +17,8 @@ export interface Calibration {
   shoulderY: number;
   /** Optional for compatibility with existing calibration producers. */
   shoulderX?: number;
+  /** Resting shoulder slope in shoulder widths, to avoid treating posture as steering. */
+  shoulderRoll?: number;
 }
 
 export interface GestureState {
@@ -23,12 +27,20 @@ export interface GestureState {
   flapVelocity: number;
   flapCount: number;
   flapRate: number;
-  /** Total completed hand waves. Only ever increases. */
-  waveCount: number;
-  /** Analog strafe: -1 (fully left) .. 0 (centre) .. +1 (fully right), proportional to how far you lean/step. */
+  prayerCount: number;
+  swipeLeftCount: number;
+  swipeRightCount: number;
+  lastSwipeDirection: -1 | 0 | 1;
+  swipeInProgress: boolean;
+  steeringMode: "head";
+  /** Mirrored camera zone: -1 (left), 0 (centre/untracked), +1 (right). */
   strafe: number;
   strafeLeft: boolean;
   strafeRight: boolean;
+  headPosition: number | null;
+  turnLeftCount: number;
+  turnRightCount: number;
+  lastTurnDirection: -1 | 0 | 1;
   jump: boolean;
   squat: boolean;
 }
@@ -37,10 +49,13 @@ export interface GestureState {
 export interface FilteredPose {
   shoulderX: number;
   shoulderY: number;
-  hipX: number;
   hipY: number;
   wristX: Record<HandSide, number>;
   wristY: Record<HandSide, number>;
+  wristTracked: Record<HandSide, boolean>;
+  handX: Record<HandSide, number>;
+  handY: Record<HandSide, number>;
+  handTracked: Record<HandSide, boolean>;
 }
 
 export type HandSide = "left" | "right";

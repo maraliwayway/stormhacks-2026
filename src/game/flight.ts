@@ -12,7 +12,7 @@ export const FLIGHT = {
   maxRise: 1000,
   pixelsPerMetre: 40,
   lanes: [340, 640, 940],
-  // One small tilt selects one adjacent lane. A 300 px move takes about 170 ms.
+  // One turn selects one adjacent lane. A 300 px move takes about 170 ms.
   laneSpeed: 1800,
   laneEnter: 0.2,
   laneExit: 0.08,
@@ -41,9 +41,17 @@ export class Flight {
   private targetLane = 1;
   private strafeDirection = 0;
   private lastFlapCount: number;
+  private lastSwipeLeftCount = 0;
+  private lastSwipeRightCount = 0;
+  private lastTurnLeftCount = 0;
+  private lastTurnRightCount = 0;
 
-  constructor(initialFlapCount = 0) {
+  constructor(initialFlapCount = 0, initialInput?: Readonly<InputState>) {
     this.lastFlapCount = initialFlapCount;
+    this.lastSwipeLeftCount = initialInput?.swipeLeftCount ?? 0;
+    this.lastSwipeRightCount = initialInput?.swipeRightCount ?? 0;
+    this.lastTurnLeftCount = initialInput?.turnLeftCount ?? 0;
+    this.lastTurnRightCount = initialInput?.turnRightCount ?? 0;
   }
 
   update(input: Readonly<InputState>, elapsedSeconds: number): number {
@@ -53,6 +61,8 @@ export class Flight {
         ? Math.min(MAX_FLAPS_PER_FRAME, input.flapCount - this.lastFlapCount)
         : 0;
     this.lastFlapCount = input.flapCount;
+    const swipeDirection = this.consumeSwipe(input);
+    const turnDirection = this.consumeHeadTurn(input);
     if (!input.tracking || !input.calibrated) {
       return 0;
     }
@@ -60,7 +70,7 @@ export class Flight {
       -FLIGHT.maxRise,
       this.velocity - flaps * FLIGHT.impulse,
     );
-    this.updateStrafe(input.strafe, elapsedSeconds);
+    this.updateStrafe(input, elapsedSeconds, swipeDirection, turnDirection);
     const nextVelocity = Math.min(
       FLIGHT.maxFall,
       this.velocity + FLIGHT.gravity * elapsedSeconds,
@@ -75,7 +85,45 @@ export class Flight {
     return flaps;
   }
 
-  private updateStrafe(strafe: number, elapsedSeconds: number): void {
+  private consumeSwipe(input: Readonly<InputState>): number {
+    const leftCount = input.swipeLeftCount ?? 0;
+    const rightCount = input.swipeRightCount ?? 0;
+    const movedLeft = leftCount > this.lastSwipeLeftCount;
+    const movedRight = rightCount > this.lastSwipeRightCount;
+    this.lastSwipeLeftCount = leftCount;
+    this.lastSwipeRightCount = rightCount;
+    if (movedLeft && movedRight) {
+      return input.lastSwipeDirection ?? 0;
+    }
+    if (movedLeft) {
+      return -1;
+    }
+    if (movedRight) {
+      return 1;
+    }
+    return 0;
+  }
+
+  private consumeHeadTurn(input: Readonly<InputState>): number {
+    const leftCount = input.turnLeftCount ?? 0;
+    const rightCount = input.turnRightCount ?? 0;
+    const movedLeft = leftCount > this.lastTurnLeftCount;
+    const movedRight = rightCount > this.lastTurnRightCount;
+    this.lastTurnLeftCount = leftCount;
+    this.lastTurnRightCount = rightCount;
+    if (movedLeft && movedRight) {
+      return input.lastTurnDirection ?? 0;
+    }
+    return movedLeft ? -1 : movedRight ? 1 : 0;
+  }
+
+  private updateStrafe(
+    input: Readonly<InputState>,
+    elapsedSeconds: number,
+    swipeDirection: number,
+    turnDirection: number,
+  ): void {
+    const strafe = input.strafe;
     const magnitude = Math.abs(strafe);
     let direction = this.strafeDirection;
     if (magnitude >= FLIGHT.laneEnter) {
@@ -83,10 +131,21 @@ export class Flight {
     } else if (magnitude <= FLIGHT.laneExit) {
       direction = 0;
     }
-    if (direction !== 0 && direction !== this.strafeDirection) {
+    let laneStep =
+      input.steeringMode === "head" ? turnDirection : swipeDirection;
+    if (
+      input.steeringMode !== "head" &&
+      laneStep === 0 &&
+      !input.swipeInProgress &&
+      direction !== 0 &&
+      direction !== this.strafeDirection
+    ) {
+      laneStep = direction;
+    }
+    if (laneStep !== 0) {
       this.targetLane = Math.max(
         0,
-        Math.min(FLIGHT.lanes.length - 1, this.targetLane + direction),
+        Math.min(FLIGHT.lanes.length - 1, this.targetLane + laneStep),
       );
     }
     this.strafeDirection = direction;

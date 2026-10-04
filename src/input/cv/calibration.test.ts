@@ -40,10 +40,13 @@ const tests: Record<string, () => void> = {
     assert.equal(bodyInFrame(body()), true);
     assert.equal(bodyInFrame(null), false);
   },
-  "bodyInFrame: hidden ankles or cut-off at the edge = no"() {
-    assert.equal(bodyInFrame(body({ drop: [L.ANKLE_L] })), false);
+  "bodyInFrame: feet may be cut off, but shoulders must be visible"() {
+    assert.equal(bodyInFrame(body({ drop: [L.ANKLE_L] })), true);
+    assert.equal(bodyInFrame(body({ drop: [L.SHOULDER_L] })), false);
     const lm = body();
     lm[L.ANKLE_R] = { x: 0.55, y: 1.02, visibility: 1 };
+    assert.equal(bodyInFrame(lm), true);
+    lm[L.SHOULDER_L].x = -0.1;
     assert.equal(bodyInFrame(lm), false);
   },
   "captures baseline after ~2 s of a still body"() {
@@ -69,13 +72,13 @@ const tests: Record<string, () => void> = {
   "waits (no capture) while body not in frame; losing it mid-capture restarts"() {
     const c = createCalibrator();
     c.start();
-    let s = c.update(body({ drop: [L.ANKLE_L] }), 0);
+    let s = c.update(body({ drop: [L.SHOULDER_L] }), 0);
     assert.equal(s.phase, "waiting");
     s = c.update(body(), 100);
     assert.equal(s.phase, "capturing");
     s = c.update(body(), 1500);
     assert.ok(s.progress > 0.5);
-    s = c.update(body({ drop: [L.KNEE_L] }), 1600);
+    s = c.update(body({ drop: [L.SHOULDER_R] }), 1600);
     assert.equal(s.phase, "waiting");
     s = c.update(body(), 1700);
     assert.equal(s.phase, "capturing");

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-import { FLIGHT, Flight } from "../../game/flight";
-import { EMPTY_INPUT } from "../types";
+import { FLIGHT } from "../../game/flight";
 import {
   DEFAULT_CALIBRATION as C,
   createGestureDetector,
@@ -82,47 +81,6 @@ const flap = (
 };
 
 const tests: Record<string, () => void> = {
-  "small torso tilts with planted hips move one lane per tilt"() {
-    const { d, t } = fresh();
-    const flight = new Flight();
-    const tilt = (offset: number, frames = 30) => {
-      for (let i = 0; i < frames; i++) {
-        const lm = pose();
-        lm[L.SHOULDER_L].x += offset;
-        lm[L.SHOULDER_R].x += offset;
-        t.now += FRAME;
-        const g = d.update(lm, t.now, C);
-        flight.update({ ...EMPTY_INPUT, ...g, calibrated: true }, FRAME / 1000);
-      }
-    };
-    tilt(C.shoulderWidth * 0.2);
-    assert.equal(
-      flight.x,
-      FLIGHT.lanes[0],
-      "a small left tilt shifts one lane",
-    );
-    tilt(C.shoulderWidth * 0.2, 90);
-    assert.equal(
-      flight.x,
-      FLIGHT.lanes[0],
-      "holding the tilt does not keep shifting",
-    );
-    tilt(0);
-    assert.equal(
-      flight.x,
-      FLIGHT.lanes[0],
-      "returning upright keeps the selected lane",
-    );
-    tilt(-C.shoulderWidth * 0.2);
-    assert.equal(
-      flight.x,
-      FLIGHT.lanes[1],
-      "the next right tilt shifts one lane right",
-    );
-    tilt(0);
-    tilt(-C.shoulderWidth * 0.2);
-    assert.equal(flight.x, FLIGHT.lanes[2]);
-  },
   "calibrated resting torso tilt and small shoulder jitter do not steer"() {
     const d = createGestureDetector();
     const cal = { ...C, shoulderX: C.hipX + 0.05 };
@@ -132,7 +90,10 @@ const tests: Record<string, () => void> = {
       lm[L.SHOULDER_L].x += offset;
       lm[L.SHOULDER_R].x += offset;
       const s = d.update(lm, 1000 + i * FRAME, cal);
-      assert.equal(Math.abs(s.strafe), 0);
+      assert.ok(
+        Math.abs(s.strafe) < FLIGHT.laneEnter,
+        "jitter stays below the lane threshold",
+      );
     }
   },
   "one arm alone cannot flap, and losing tracking clears a half-finished stroke"() {
@@ -172,16 +133,6 @@ const tests: Record<string, () => void> = {
       assert.equal(s.flapCount, i + 1);
     }
   },
-  "a lean reaches useful steering within 100 ms and reverses promptly"() {
-    const { d, t } = fresh();
-    const offset = C.shoulderWidth * 0.45;
-    t.now += FRAME;
-    let s = run(d, t, { hipX: C.hipX - offset }, { hipX: C.hipX - offset }, 99);
-    assert.ok(s.strafe > 0.8, `steering after 99 ms: ${s.strafe}`);
-    t.now += FRAME;
-    s = run(d, t, { hipX: C.hipX + offset }, { hipX: C.hipX + offset }, 99);
-    assert.ok(s.strafe < -0.8, `reversed steering after 99 ms: ${s.strafe}`);
-  },
   "small shoulder-line jitter neither steers nor creates flaps"() {
     const { d, t } = fresh();
     for (let i = 0; i < 90; i++) {
@@ -193,7 +144,10 @@ const tests: Record<string, () => void> = {
         C,
       );
       assert.equal(s.flapCount, 0);
-      assert.equal(Math.abs(s.strafe), 0);
+      assert.ok(
+        Math.abs(s.strafe) < FLIGHT.laneEnter,
+        "jitter stays below the lane threshold",
+      );
     }
   },
   "idle: nothing fires"() {
@@ -213,12 +167,12 @@ const tests: Record<string, () => void> = {
     assert.equal(down.flapCount, 1);
     assert.equal(down.flapping, true);
   },
-  "slow arm drop (>400 ms) is not a flap"() {
+  "a gentle two-arm downstroke still counts once"() {
     const { d, t } = fresh();
     run(d, t, { wristY: 0.6 }, { wristY: 0.1 }, 200);
     run(d, t, { wristY: 0.1 }, { wristY: 0.1 }, 600); // hold above
     const s = run(d, t, { wristY: 0.1 }, { wristY: 0.6 }, 2500);
-    assert.equal(s.flapCount, 0);
+    assert.equal(s.flapCount, 1);
   },
   "flapRate over 3 s window"() {
     const { d, t } = fresh();
@@ -232,134 +186,64 @@ const tests: Record<string, () => void> = {
     assert.equal(s.flapRate, 0, "rate decays when player stops");
     assert.equal(s.flapCount, 3, "flapCount never decreases");
   },
-  "strafe left = hips to larger image x, with hysteresis"() {
-    const { d, t } = fresh();
-    const edge = C.shoulderWidth * 0.35;
-    let s = run(d, t, {}, { hipX: C.hipX + edge * 1.3 }, 300);
-    assert.equal(s.strafeLeft, true);
-    assert.equal(s.strafeRight, false);
-    s = run(
-      d,
-      t,
-      { hipX: C.hipX + edge * 1.3 },
-      { hipX: C.hipX + edge * 0.8 },
-      300,
-    ); // inside enter, outside exit
-    assert.equal(s.strafeLeft, true, "hysteresis keeps it on");
-    s = run(d, t, { hipX: C.hipX + edge * 0.8 }, {}, 400);
-    assert.equal(s.strafeLeft, false);
-  },
-  "analog strafe is proportional, signed, and has a deadzone"() {
-    const { d, t } = fresh();
-    const sw = C.shoulderWidth;
-    let s = run(d, t, {}, { hipX: C.hipX - sw * 0.05 }, 600);
-    assert.equal(s.strafe, 0, "inside deadzone");
-    s = run(
-      d,
-      t,
-      { hipX: C.hipX - sw * 0.05 },
-      { hipX: C.hipX - sw * 0.25 },
-      600,
-    );
-    assert.ok(s.strafe > 0.1 && s.strafe < 0.5, `slight right ${s.strafe}`);
-    assert.equal(s.strafeRight, false, "boolean not on yet");
-    s = run(
-      d,
-      t,
-      { hipX: C.hipX - sw * 0.25 },
-      { hipX: C.hipX - sw * 0.8 },
-      600,
-    );
-    assert.equal(s.strafe, 1);
-    s = run(
-      d,
-      t,
-      { hipX: C.hipX - sw * 0.8 },
-      { hipX: C.hipX + sw * 0.8 },
-      900,
-    );
-    assert.equal(s.strafe, -1, "left is negative");
-  },
-  "a small wave with either raised hand confirms once and must be lowered before another confirmation"() {
+  "one horizontal swipe with either hand counts once in its preview direction"() {
     for (const side of [L.WRIST_L, L.WRIST_R]) {
       for (const direction of [-1, 1]) {
         const { d, t } = fresh();
-        const baseX = side === L.WRIST_L ? 0.65 : 0.35;
-        const feed = (x: number, y = 0.25, frames = 5) => {
-          let state!: ReturnType<typeof d.update>;
-          for (let i = 0; i < frames; i++) {
-            const lm = pose();
-            lm[side] = { x, y };
-            t.now += FRAME;
-            state = d.update(lm, t.now, C);
-          }
-          return state;
-        };
-        feed(baseX);
-        feed(baseX + direction * 0.1);
-        let s = feed(baseX);
-        assert.equal(s.waveCount, 1, `side ${side}, direction ${direction}`);
-        assert.equal(s.flapCount, 0);
-        // Continued waving with the hand raised cannot skip the controls screen.
-        feed(baseX + direction * 0.1);
-        s = feed(baseX);
-        assert.equal(s.waveCount, 1);
-        feed(baseX, 0.6);
-        feed(baseX);
-        feed(baseX + direction * 0.1);
-        s = feed(baseX);
-        assert.equal(s.waveCount, 2);
+        let state!: ReturnType<typeof d.update>;
+        for (let i = 0; i <= 12; i++) {
+          const lm = pose();
+          lm[side] = {
+            x: 0.5 + direction * (0.15 - i * 0.025),
+            y: C.shoulderY,
+          };
+          t.now += FRAME;
+          state = d.update(lm, t.now, C);
+        }
+        assert.equal(state.swipeRightCount, direction === 1 ? 1 : 0);
+        assert.equal(state.swipeLeftCount, direction === -1 ? 1 : 0);
+        assert.equal(state.flapCount, 0);
+        for (let i = 0; i < 60; i++) {
+          const lm = pose();
+          lm[side] = { x: 0.5 - direction * 0.15, y: C.shoulderY };
+          t.now += FRAME;
+          state = d.update(lm, t.now, C);
+        }
+        assert.equal(
+          state.swipeRightCount + state.swipeLeftCount,
+          1,
+          "holding the endpoint cannot repeat",
+        );
       }
     }
   },
-  "one sweep, a stationary raised hand, jitter and flapping cannot confirm"() {
+  "small waves, stationary hands, jitter and flapping cannot confirm"() {
     const { d, t } = fresh();
-    const feed = (x: number, frames = 15) => {
-      let s!: ReturnType<typeof d.update>;
-      for (let i = 0; i < frames; i++) {
-        const lm = pose();
-        lm[L.WRIST_R] = { x: x + Math.sin(i) * 0.005, y: 0.25 };
-        t.now += FRAME;
-        s = d.update(lm, t.now, C);
-      }
-      return s;
-    };
-    assert.equal(feed(0.35).waveCount, 0);
-    assert.equal(
-      feed(0.5).waveCount,
-      0,
-      "one sweep is not a back-and-forth wave",
-    );
-    assert.equal(
-      feed(0.5, 60).waveCount,
-      0,
-      "holding and jitter do not confirm",
-    );
+    for (let i = 0; i < 90; i++) {
+      const lm = pose();
+      lm[L.WRIST_R] = { x: 0.62 + Math.sin(i / 4) * 0.04, y: C.shoulderY };
+      t.now += FRAME;
+      assert.equal(d.update(lm, t.now, C).swipeRightCount, 0);
+    }
     const flapper = fresh();
     for (let i = 0; i < 3; i++) {
-      assert.equal(flap(flapper.d, flapper.t, 200).waveCount, 0);
+      assert.equal(flap(flapper.d, flapper.t, 200).swipeRightCount, 0);
     }
   },
-  "tracking loss clears an unfinished wave without replaying it on return"() {
+  "tracking loss clears an unfinished swipe without replaying it on return"() {
     const { d, t } = fresh();
-    for (const x of [0.35, 0.35, 0.35, 0.5, 0.5, 0.5]) {
+    for (const x of [0.65, 0.65, 0.65, 0.6, 0.55, 0.5]) {
       const lm = pose();
-      lm[L.WRIST_R] = { x, y: 0.25 };
+      lm[L.WRIST_R] = { x, y: C.shoulderY };
       t.now += FRAME;
-      assert.equal(d.update(lm, t.now, C).waveCount, 0);
+      assert.equal(d.update(lm, t.now, C).swipeRightCount, 0);
     }
     t.now += FRAME;
     d.update(null, t.now, C);
     const lm = pose();
-    lm[L.WRIST_R] = { x: 0.35, y: 0.25 };
+    lm[L.WRIST_R] = { x: 0.35, y: C.shoulderY };
     t.now += FRAME;
-    assert.equal(d.update(lm, t.now, C).waveCount, 0);
-  },
-  "strafe right"() {
-    const { d, t } = fresh();
-    const s = run(d, t, {}, { hipX: C.hipX - C.shoulderWidth * 0.5 }, 300);
-    assert.equal(s.strafeRight, true);
-    assert.equal(s.strafeLeft, false);
+    assert.equal(d.update(lm, t.now, C).swipeRightCount, 0);
   },
   "jump needs height AND upward speed"() {
     const a = fresh();

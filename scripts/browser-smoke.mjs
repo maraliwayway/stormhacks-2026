@@ -45,66 +45,232 @@ try {
   });
   const canvas = await page.locator("canvas").boundingBox();
   assert.ok(Math.abs(canvas.width / canvas.height - 16 / 9) < 0.01);
-  // Feed synthetic camera landmarks through the real detector and menu confirmation.
+  await mkdir("test-results", { recursive: true });
+  // Real gesture recognition feeds the same counter contract as the camera source.
   await page.evaluate(async () => {
     const { createGestureDetector, DEFAULT_CALIBRATION: cal } = await import(
       "/src/input/cv/gestureDetector.ts"
     );
     const { L } = await import("/src/input/cv/landmarks.ts");
     const detector = createGestureDetector();
-    let ts = 1000;
-    window.waveInput = {
+    let timestampMs = 1000;
+    window.motionInput = {
       ...window.testEmpty,
       tracking: true,
       calibrated: true,
+      menuConfirmMode: "clap",
       selectCount: 0,
     };
-    window.testManager.setSource({ getState: () => window.waveInput });
-    window.waveFrames = (x, y = 0.25, frames = 6) => {
-      for (let i = 0; i < frames; i++) {
-        const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.6 }));
-        lm[L.SHOULDER_L] = { x: 0.375, y: cal.shoulderY };
-        lm[L.SHOULDER_R] = { x: 0.625, y: cal.shoulderY };
-        lm[L.HIP_L] = { x: 0.375, y: cal.hipY };
-        lm[L.HIP_R] = { x: 0.625, y: cal.hipY };
-        lm[L.WRIST_L] = { x: 0.65, y: 0.6 };
-        lm[L.WRIST_R] = { x, y };
-        ts += 33;
-        const g = detector.update(lm, ts, cal);
-        window.waveInput = {
+    window.testManager.setSource({ getState: () => window.motionInput });
+    window.motionFrames = ({
+      together = false,
+      lean = 0,
+      headX = 0.5,
+      hiddenWrist = false,
+      sweepX = null,
+      frames = 6,
+    } = {}) => {
+      for (let frame = 0; frame < frames; frame++) {
+        const points = Array.from({ length: 33 }, () => ({
+          x: 0.5,
+          y: 0.6,
+          visibility: 1,
+        }));
+        for (const index of [L.NOSE, L.EYE_L, L.EYE_R, L.EAR_L, L.EAR_R]) {
+          points[index] = { x: headX, y: 0.2, visibility: 1 };
+        }
+        points[L.SHOULDER_L] = {
+          x: 0.375 + lean,
+          y: cal.shoulderY,
+          visibility: 1,
+        };
+        points[L.SHOULDER_R] = {
+          x: 0.625 + lean,
+          y: cal.shoulderY,
+          visibility: 1,
+        };
+        points[L.HIP_L] = { x: 0.375, y: cal.hipY, visibility: 1 };
+        points[L.HIP_R] = { x: 0.625, y: cal.hipY, visibility: 1 };
+        points[L.WRIST_L] = {
+          x: together ? 0.49 : 0.35,
+          y: together ? 0.43 : 0.6,
+          visibility: hiddenWrist ? 0.05 : 0.35,
+        };
+        points[L.WRIST_R] = {
+          x: sweepX ?? (together ? 0.51 : 0.65),
+          y: sweepX !== null ? cal.shoulderY : together ? 0.43 : 0.6,
+          visibility: 0.35,
+        };
+        timestampMs += 33;
+        const gestures = detector.update(points, timestampMs, cal);
+        window.motionInput = {
           ...window.testEmpty,
-          ...g,
+          ...gestures,
           calibrated: true,
-          selectCount: g.waveCount,
+          menuConfirmMode: "clap",
+          selectCount: gestures.prayerCount,
         };
       }
     };
-    window.waveFrames(0.35, 0.6);
-    window.waveFrames(0.35);
-    window.waveFrames(0.45);
-    window.waveFrames(0.35);
+    for (const sweepX of [0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35]) {
+      window.motionFrames({ sweepX, frames: 3 });
+    }
+    window.motionInput.jump = true;
+    window.motionInput.select = true;
+  });
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Boot").stage),
+    "menu",
+    "swipes and jumps cannot select camera menus",
+  );
+  await page.evaluate(() => {
+    window.motionFrames({ together: true });
   });
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Boot").stage === "controls",
   );
+  const preview = await page.evaluate(async () => {
+    const { mountCameraPanel } = await import("/src/input/cv/cameraPanel.ts");
+    const { previewBounds } = await import("/src/input/cv/previewBounds.ts");
+    const surface = document.createElement("canvas");
+    surface.width = 1280;
+    surface.height = 720;
+    const context = surface.getContext("2d");
+    context.fillStyle = "#295351";
+    context.fillRect(0, 0, surface.width, surface.height);
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    window.motionStream = surface.captureStream(30);
+    video.srcObject = window.motionStream;
+    await video.play();
+    window.motionPanel = mountCameraPanel(
+      {
+        getState: () => window.motionInput,
+        getCalibration: () => ({ phase: "done", progress: 1 }),
+        getPrompt: () => null,
+      },
+      video,
+      document.getElementById("game"),
+    );
+    const scene = window.testGame.scene.getScene("Boot");
+    return {
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      objectFit: video.style.objectFit,
+      bounds: previewBounds(video, 640, 480),
+      titleBottom: scene.title.getBounds().bottom,
+      copyTop: scene.copy.getBounds().top,
+      copyBottom: scene.copy.getBounds().bottom,
+      buttonTop: scene.button.getBounds().top,
+      lastLineRight:
+        scene.copy.x +
+        scene.copy.context.measureText(scene.copy.text.split("\n").at(-1))
+          .width /
+          2,
+    };
+  });
+  assert.equal(preview.videoWidth, 1280);
+  assert.equal(preview.videoHeight, 720);
+  assert.equal(preview.objectFit, "contain");
+  assert.deepEqual(preview.bounds, { x: 0, y: 60, width: 640, height: 360 });
+  assert.ok(preview.titleBottom < preview.copyTop);
+  assert.ok(preview.copyBottom < preview.buttonTop);
+  assert.ok(
+    preview.lastLineRight < 856,
+    "camera clears the last controls line",
+  );
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: "test-results/head-controls.png" });
   await page.evaluate(() => {
-    window.waveFrames(0.45);
-    window.waveFrames(0.35);
+    window.motionFrames({ together: true, frames: 40 });
+    window.motionInput.flapCount++;
+    window.motionInput.jump = true;
   });
   await page.waitForTimeout(100);
   assert.equal(
     await page.evaluate(() => window.testGame.scene.isActive("Game")),
     false,
-    "continued waving cannot skip the controls",
+    "a held prayer pose and flapping cannot skip controls",
   );
   await page.evaluate(() => {
-    window.waveFrames(0.35, 0.6);
-    window.waveFrames(0.35);
-    window.waveFrames(0.45);
-    window.waveFrames(0.35);
+    window.motionFrames();
+    window.motionFrames({ together: true });
   });
   await page.waitForFunction(() => window.testGame.scene.isActive("Game"));
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
+    640,
+    "prayer selection keeps the starting lane centred",
+  );
+  await page.evaluate(() => {
+    window.motionFrames({ lean: 0.015, hiddenWrist: true });
+  });
+  assert.equal(await page.evaluate(() => window.motionInput.tracking), true);
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
+    640,
+    "shoulder motion cannot turn while the head stays centered",
+  );
+  await page.evaluate(() => {
+    window.motionFrames({ headX: 0.7, hiddenWrist: true });
+  });
+  await page.waitForFunction(
+    () => window.testGame.scene.getScene("Game").flight.x === 340,
+  );
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
+    340,
+    "a held head position changes only one lane",
+  );
+  await page.screenshot({ path: "test-results/head-left.png" });
+  await page.evaluate(() => {
+    window.motionFrames({ hiddenWrist: true });
+  });
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
+    340,
+    "centering the head keeps the current lane",
+  );
+  await page.screenshot({ path: "test-results/head-center.png" });
+  await page.evaluate(() => {
+    window.motionFrames({ headX: 0.3, hiddenWrist: true });
+  });
+  await page.waitForFunction(
+    () => window.testGame.scene.getScene("Game").flight.x === 640,
+  );
+  await page.evaluate(() => {
+    window.motionFrames();
+    window.motionFrames({ headX: 0.3 });
+  });
+  await page.waitForFunction(
+    () => window.testGame.scene.getScene("Game").flight.x === 940,
+  );
+  await page.evaluate(() => {
+    window.testGame.scene.getScene("Game").showGameOver();
+    window.motionInput.flapCount++;
+    window.motionInput.jump = true;
+  });
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").phase),
+    "over",
+    "camera flaps and jumps cannot select a game-over action",
+  );
+  await page.evaluate(() => {
+    window.motionFrames();
+    window.motionFrames({ together: true });
+  });
+  await page.waitForFunction(() => window.testGame.scene.isActive("Boot"));
   await page.evaluate(async () => {
+    window.motionPanel.destroy();
+    for (const track of window.motionStream.getTracks()) {
+      track.stop();
+    }
     const { keyboard } = await import("/src/input/defaultInput.ts");
     window.testManager.setSource(keyboard);
     window.testGame.scene.stop("Game");
@@ -568,7 +734,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: raised-hand wave menus, fresh wave after lowering, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
+    "Browser checks passed: prayer-only menus, release before repeat, swipes and jumps rejected, head zones despite wrist occlusion, inert centre, release before another turn, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
   );
 } finally {
   await browser?.close();
