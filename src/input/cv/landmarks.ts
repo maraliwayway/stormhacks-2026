@@ -8,6 +8,8 @@ export const L = {
   EAR_R: 8,
   SHOULDER_L: 11,
   SHOULDER_R: 12,
+  ELBOW_L: 13,
+  ELBOW_R: 14,
   WRIST_L: 15,
   WRIST_R: 16,
   PINKY_L: 17,

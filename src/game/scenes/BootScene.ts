@@ -1,17 +1,21 @@
 import Phaser from "phaser";
+import { audio } from "../../audio/audio";
 import { cameraPanel } from "../../input/cv/cameraPanel";
-import { keyboard } from "../../input/defaultInput";
 import { inputManager } from "../../input/inputManager";
 import { gameUi } from "../../ui/gameUi";
 import { MenuConfirm } from "../menuConfirm";
 import { loadGameArt } from "../rendering/assets";
+import { ensureCatArt } from "../rendering/enemies";
+import { ensureHeavenArt } from "../rendering/heavenArt";
+import { DriftingClouds, SKY } from "../rendering/sky";
 import { bestScore } from "../storage";
 
+/** Title screen: clouds drift behind the player's bird until they put their palms together. */
 export class BootScene extends Phaser.Scene {
   private confirm!: MenuConfirm;
-  private stage: "menu" | "controls" = "menu";
   private artFailed = false;
   private inputSource = inputManager.getSource();
+  private clouds?: DriftingClouds;
 
   constructor() {
     super("Boot");
@@ -30,15 +34,18 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     cameraPanel.setMode("large");
-    this.stage = "menu";
+    audio.setMusic("title");
     this.inputSource = inputManager.getSource();
     this.confirm = new MenuConfirm(inputManager.getState());
+    this.cameras.main.setBackgroundColor(SKY);
+    this.clouds = new DriftingClouds(this);
+    if (!this.artFailed) {
+      ensureHeavenArt(this);
+      ensureCatArt(this);
+    }
     gameUi.setArtReady(!this.artFailed);
     gameUi.showMenu(bestScore.get());
-    const removeActions = [
-      gameUi.onAction("advance", () => this.advance()),
-      gameUi.onAction("back", () => this.back()),
-    ];
+    const removeActions = [gameUi.onAction("advance", () => this.advance())];
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
       removeActions.forEach((remove) => remove()),
     );
@@ -49,27 +56,17 @@ export class BootScene extends Phaser.Scene {
     if (this.artFailed || !input.tracking || !input.calibrated) {
       return;
     }
-    if (this.stage === "controls") {
-      this.scene.start("Game");
-      return;
-    }
-    this.stage = "controls";
-    gameUi.showControls();
+    this.scene.start("Game");
   }
 
-  private back(): void {
-    this.stage = "menu";
-    this.confirm = new MenuConfirm(inputManager.getState());
-    gameUi.showMenu(bestScore.get());
-  }
-
-  update(): void {
+  update(_time: number, deltaMs: number): void {
+    this.clouds?.update(deltaMs);
     const input = inputManager.getState();
     if (this.inputSource !== inputManager.getSource()) {
       this.inputSource = inputManager.getSource();
       this.confirm = new MenuConfirm(input);
     }
-    gameUi.updateInput(input, input !== keyboard.getState());
+    gameUi.updateInput(input);
     if (this.confirm.read(input)) {
       this.advance();
     }

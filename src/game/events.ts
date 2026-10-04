@@ -16,6 +16,11 @@ export interface GameEvents {
   /** Retained for voice integration compatibility; endless runs do not emit win. */
   win: { altitude: number; duration: number };
   pickup: { x: number; y: number; total: number };
+  /** A cat face appears and locks a lane. */
+  cat_warning: { lane: number };
+  /** The paw comes down on the locked lane. */
+  cat_strike: { lane: number };
+  lane_change: { lane: number };
 }
 
 type Listener<K extends keyof GameEvents> = (event: GameEvents[K]) => void;
