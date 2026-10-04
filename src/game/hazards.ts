@@ -1,4 +1,6 @@
 import { FLIGHT } from "./flight";
+import { MAX_HAZARD_HEIGHT, hazardAppearance } from "./hazardAppearance";
+import type { Level } from "./levels";
 
 export interface Box {
   x: number;
@@ -9,6 +11,7 @@ export interface Box {
 export interface Hazard extends Box {
   id: number;
   kind: "pot" | "knife" | "pin";
+  art?: string;
   passed: boolean;
 }
 export const COLLISION_SCALE = 0.8;
@@ -34,7 +37,6 @@ export function seededRandom(seed: number): () => number {
 }
 
 const LANE_ORDER = [0, 2, 1];
-const MAX_HAZARD_HEIGHT = 62;
 const NEAR_MISS_DISTANCE = 45;
 export const HAZARD_ROW_SPACING = 900;
 export const HAZARD_REACTION_SECONDS = 2.5;
@@ -42,6 +44,8 @@ export const HAZARD_MIN_LEAD = FLIGHT.maxRise * HAZARD_REACTION_SECONDS;
 const KINDS = ["pot", "knife", "pin"] as const;
 
 export interface HazardAdvanceOptions {
+  /** The authored artwork determines the matching visible and collision dimensions. */
+  levelId?: Level["id"];
   /** Bird centre in world pixels; defaults to the middle of the viewport. */
   birdY?: number;
   /** Consume rows without spawning while a cat or Heaven reserves the map. */
@@ -59,8 +63,11 @@ export class HazardField {
   }
 
   advance(cameraY: number, options: HazardAdvanceOptions = {}): void {
-    const { birdY = cameraY + FLIGHT.height / 2, suppressObstacles = false } =
-      options;
+    const {
+      birdY = cameraY + FLIGHT.height / 2,
+      suppressObstacles = false,
+      levelId = "kitchen",
+    } = options;
     if (suppressObstacles) {
       this.items = [];
     } else {
@@ -79,7 +86,7 @@ export class HazardField {
       this.nextRowY > horizon ||
       (!suppressObstacles && this.items.length === 0)
     ) {
-      const hazard = this.createNextHazard();
+      const hazard = this.createNextHazard(levelId);
       const hasSafeLead = hazard.y + hazard.height / 2 <= highestSafeEdge;
       if (!suppressObstacles && this.items.length === 0 && hasSafeLead) {
         this.items.push(hazard);
@@ -89,16 +96,18 @@ export class HazardField {
     }
   }
 
-  private createNextHazard(): Hazard {
+  private createNextHazard(levelId: Level["id"]): Hazard {
     const lane = LANE_ORDER[Math.floor(this.random() * LANE_ORDER.length)];
     const kind = KINDS[Math.floor(this.random() * KINDS.length)];
+    const appearance = hazardAppearance(this.nextId, kind, levelId);
     return {
       id: this.nextId++,
       kind,
       x: FLIGHT.lanes[lane],
       y: this.nextRowY,
-      width: kind === "pin" ? 150 : 96,
-      height: kind === "knife" ? 36 : MAX_HAZARD_HEIGHT,
+      art: appearance.texture,
+      width: appearance.width,
+      height: appearance.height,
       passed: false,
     };
   }

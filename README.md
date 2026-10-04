@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. The game uses a 1280 by 720 canvas that fits the browser while preserving its aspect ratio.
+Open the local URL printed by Vite. The game uses a 1280 by 720 canvas that fits the browser while preserving its aspect ratio. Responsive native HTML menus, instructions, HUD, pause, and results sit above it.
 
 ```sh
 npm run lint
@@ -27,6 +27,7 @@ For browser integration checks:
 npx playwright install chromium
 npm run test:browser
 npm run test:camera
+npm run test:ui
 ```
 
 The browser test starts its own local server and checks prayer-only camera menus, release before another selection, head steering, an inert centre zone, and steering with an obscured wrist, start, flight, restart, tracking pause, and responsive sizing. The camera test loads the real local pose model in its worker, processes generated video, checks that the interface keeps updating, and verifies camera shutdown. It does not assess tracking accuracy on a person. It saves screenshots under `test-results`. Enable worms through `.env.local` to exercise the optional pickup check too.
@@ -35,7 +36,7 @@ The browser test starts its own local server and checks prayer-only camera menus
 
 `src/input/types.ts` defines the shared `InputState` and `InputSource` contract. Input producers register with `inputManager.setSource(source)`. Gameplay reads `inputManager.getState()` every frame without waiting on the camera or network.
 
-Keyboard fallback starts by default. Space records one flap per press, arrows provide strafe/jump/squat, and Enter confirms menus. The keyboard badge hides when a CV producer replaces the source. Camera menus use a clap into a prayer pose: bring your palms together near your chest, then separate them before selecting again. Holding the pose does not skip screens. Swipes, jumps, and flaps do not select buttons. Contacts increment `selectCount`; `menuConfirmMode: "clap"` restricts camera confirmation to that counter. The same gesture returns from game over to the menu. Holding Space does not generate repeated flaps.
+Keyboard starts immediately. Choose **Use my camera** to enable motion controls; camera permission and the pose model only start after that choice. Choose **Keyboard** to release the camera and continue with keys. Space records one flap per press, arrows provide strafe/jump/squat, and Enter confirms menus. The input status and movement instructions update when a CV producer replaces the source. Camera menus use a clap into a prayer pose: bring your palms together near your chest, then separate them before selecting again. Holding the pose does not skip screens. Swipes, jumps, and flaps do not select buttons. Contacts increment `selectCount`; `menuConfirmMode: "clap"` restricts camera confirmation to that counter. The same gesture returns from game over to the menu. Holding Space does not generate repeated flaps.
 
 Keyboard confirmation also uses the optional monotonic `selectCount` field so a short Enter press is not missed between render frames. Existing CV producers do not need to provide it.
 
@@ -63,13 +64,14 @@ Each flap adds a 700 px/s upward impulse, with upward speed capped at 1000 px/s.
 
 Copy `.env.example` to `.env.local`, set `VITE_ENABLE_WORMS=true`, and restart Vite to try it. Leave it off until the team's M3 core milestone passes. Worms appear beside hazards, play a short pickup sound, and save the total locally. The sound is an original generated tone that the designer can replace.
 
-The bird, kitchen, hazards, and enemies use code-drawn placeholders. Webcam tracking is integrated. Final art, voice playback, and the backend transport remain team integration work.
+The supplied kitchen and Dessert maps, five pigeon flight frames, and kitchen and desert obstacles are integrated. Optimized WebP copies total about 664 KB; the original PNGs remain unchanged. Cat encounters and Heaven retain procedural art. See [UI and artwork](docs/ui.md) for the design references, rendering boundaries, and asset preparation workflow. Voice playback and the backend transport remain team integration work.
 
 | Folder | Owner / purpose |
 | --- | --- |
 | `src/input` | Shared contract and input sources |
 | `src/input/cv` | Camera tracking, calibration, and gesture detection |
 | `src/game/scenes` | Phaser scenes, Dev 2 |
+| `src/ui` | Native screens, input status, focus, and HUD |
 | `src/net` | Backend connection, Dev 3 |
 | `public/assets` | Art and audio from the designer |
 
@@ -86,7 +88,8 @@ Run `npm run lint:fix` before reviewing a change. `npm run lint` checks formatti
 | Module | Responsibility |
 | --- | --- |
 | `src/game/scenes/GameScene.ts` | Run lifecycle and ordered frame updates |
-| `src/game/rendering` | Bird, obstacles, cat, and background drawing |
+| `src/game/rendering` | Illustrated maps, animated pigeon, obstacle sprites, cat, and Heaven |
+| `src/ui` | Screen structure, actions, accessibility, and HUD |
 | `src/game/flight.ts` | Movement physics and lane selection |
 | `src/game/hazards.ts`, `enemies.ts`, `difficulty.ts` | Safe obstacle generation, cat encounters, and pacing |
 | `src/input/cv/poseTracker.ts`, `poseWorker.ts` | Camera lifecycle, frame freshness, and background pose inference |
@@ -98,11 +101,11 @@ Keep `InputState`, the gesture factory exports, game event payloads, and the dif
 
 ## Storyboard flow
 
-Bring your palms together in camera mode, press Enter in keyboard mode, or click Start to see the controls. Confirm again to fly. Space flaps in keyboard mode and left/right arrows change lanes. After a death, bring your palms together to return to the menu in camera mode. Keyboard players can flap to retry or jump/Enter to return to the menu. Heaven continues into the next circuit without a victory screen.
+Bring your palms together in camera mode, press Enter in keyboard mode, or click Take flight to see the controls. Confirm again to fly. Space flaps in keyboard mode and left/right arrows change lanes. Esc or Pause freezes the run and opens a focus-contained dialog. Changing tabs also pauses. Resume with the button, Esc, or a fresh prayer gesture. After a death, click Fly again to retry or bring your palms together to return to the menu in camera mode. Keyboard players can flap to retry or jump/Enter to return to the menu. Heaven continues into the next circuit without a victory screen.
 
 Kitchen runs from 0 to 60 metres, Dessert from 60 to 120, and Bird Heaven from 120 to 150. At 150 metres the map returns to Kitchen and repeats this circuit indefinitely. These distances live in `src/game/levels.ts`. Altitude, score, pickups and difficulty carry across every loop. Each level starts with a lift boost. Heaven has scrolling clouds, a golden halo and a clear flight path for a short breather. Keep flapping to avoid falling. `level_start` includes Heaven and fires on every transition. Reaching Heaven does not end the run or emit `win`. Death ends the run and submits its accumulated score.
 
-The browser game targets a laptop. Native desktop packaging, slots, inventory, powerups, final art, and live encouragement need their respective team integrations. Multiplayer and daily streaks are excluded as shown in the MVP storyboard. The designer's reference calls for clean 2D shapes, bright contrasting colours, and medium pencil-textured outlines. Current art is drawn placeholder art with medium outlines; final texture assets come from the designer.
+The browser game targets a laptop. Native desktop packaging, slots, inventory, powerups, and live encouragement need their respective team integrations. Multiplayer and daily streaks are excluded as shown in the MVP storyboard. The designer's reference calls for clean 2D shapes, bright contrasting colours, and medium pencil-textured outlines. The supplied designer artwork now appears throughout the menu and gameplay, with a matching paper, green, and coral interface.
 
 ## Gentle obstacle pacing
 

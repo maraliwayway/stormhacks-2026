@@ -1,93 +1,78 @@
 import type Phaser from "phaser";
+import { hazardAppearance } from "../hazardAppearance";
 import type { Hazard } from "../hazards";
 import type { Level } from "../levels";
 
-const DESSERT_COLORS = { pot: 0xe77b96, knife: 0x8c5c49, pin: 0xeab75c };
-const KITCHEN_COLORS = { pot: 0x517783, knife: 0x7893a0, pin: 0xb17148 };
+/** One sprite per active obstacle; previews give offscreen obstacles a visible lane. */
+export class HazardRenderer {
+  private images = new Map<number, Phaser.GameObjects.Image>();
 
-/** Draw offscreen lane previews and the obstacle art using world coordinates. */
-export function drawHazards(
-  graphics: Phaser.GameObjects.Graphics,
-  hazards: readonly Hazard[],
-  cameraY: number,
-  levelId: Level["id"],
-): void {
-  graphics.clear();
-  for (const hazard of hazards) {
-    if (hazard.y + hazard.height / 2 < cameraY) {
-      // At full climb speed, the screen alone is too short for a fair warning.
-      const y = cameraY + 145;
-      graphics
-        .fillStyle(0xffd46b, 0.4)
-        .fillRoundedRect(hazard.x - 80, y - 20, 160, 60, 12);
-      graphics
-        .lineStyle(3, 0xb7782e)
-        .strokeRoundedRect(hazard.x - 80, y - 20, 160, 60, 12);
-      graphics
-        .fillStyle(0xb7782e)
-        .fillTriangle(
-          hazard.x - 15,
-          y + 18,
-          hazard.x + 15,
-          y + 18,
-          hazard.x,
-          y - 5,
-        );
-      continue;
-    }
-    if (levelId === "dessert") {
-      graphics
-        .fillStyle(DESSERT_COLORS[hazard.kind])
-        .fillRoundedRect(
-          hazard.x - hazard.width / 2,
-          hazard.y - hazard.height / 2,
-          hazard.width,
-          hazard.height,
-          14,
-        );
-      graphics
-        .lineStyle(4, 0x173e47)
-        .strokeRoundedRect(
-          hazard.x - hazard.width / 2,
-          hazard.y - hazard.height / 2,
-          hazard.width,
-          hazard.height,
-          14,
-        );
-      graphics.fillStyle(0xfff2d6);
-      for (
-        let x = hazard.x - hazard.width / 2 + 12;
-        x < hazard.x + hazard.width / 2;
-        x += 28
-      ) {
-        graphics.fillCircle(x, hazard.y - 5, 5);
+  constructor(
+    private scene: Phaser.Scene,
+    private graphics: Phaser.GameObjects.Graphics,
+  ) {}
+
+  draw(
+    hazards: readonly Hazard[],
+    cameraY: number,
+    levelId: Level["id"],
+  ): void {
+    this.graphics.clear();
+    const activeIds = new Set(hazards.map((hazard) => hazard.id));
+    for (const [id, image] of this.images) {
+      if (!activeIds.has(id)) {
+        image.destroy();
+        this.images.delete(id);
       }
-      continue;
     }
-    const left = hazard.x - hazard.width / 2;
-    const top = hazard.y - hazard.height / 2;
-    graphics.fillStyle(KITCHEN_COLORS[hazard.kind]);
-    graphics.fillRoundedRect(
-      left,
-      top,
-      hazard.width,
-      hazard.height,
-      hazard.kind === "knife" ? 4 : 14,
-    );
-    graphics
-      .lineStyle(4, 0x173e47)
-      .strokeRoundedRect(left, top, hazard.width, hazard.height, 8);
-    if (hazard.kind === "pot") {
-      graphics.strokeRect(left - 10, top + 18, 10, 15);
-      graphics.strokeRect(left + hazard.width, top + 18, 10, 15);
-      graphics.lineBetween(left - 5, top, left + hazard.width + 5, top);
-    } else if (hazard.kind === "knife") {
-      graphics
-        .fillStyle(0x173e47)
-        .fillRect(left, top, hazard.width * 0.3, hazard.height);
-    } else {
-      graphics.fillStyle(0x825738).fillRect(left - 18, hazard.y - 8, 18, 16);
-      graphics.fillRect(left + hazard.width, hazard.y - 8, 18, 16);
+    for (const hazard of hazards) {
+      const key =
+        hazard.art ?? hazardAppearance(hazard.id, hazard.kind, levelId).texture;
+      let image = this.images.get(hazard.id);
+      if (!image) {
+        image = this.scene.add.image(hazard.x, hazard.y, key).setDepth(5);
+        this.images.set(hazard.id, image);
+      }
+      const offscreen = hazard.y + hazard.height / 2 < cameraY + 110;
+      image
+        .setVisible(!offscreen)
+        .setPosition(hazard.x, hazard.y)
+        .setDisplaySize(hazard.width, hazard.height);
+      if (offscreen && !hazard.passed) {
+        this.drawPreview(hazard.x, cameraY + 136);
+      } else {
+        this.graphics
+          .fillStyle(0x293c33, 0.16)
+          .fillEllipse(
+            hazard.x,
+            hazard.y + hazard.height / 2 + 5,
+            hazard.width * 0.85,
+            10,
+          );
+      }
     }
+  }
+
+  private drawPreview(x: number, y: number): void {
+    this.graphics
+      .fillStyle(0xffefc6, 0.96)
+      .fillRoundedRect(x - 45, y - 23, 90, 46, 13);
+    this.graphics
+      .lineStyle(2, 0xa57938)
+      .strokeRoundedRect(x - 45, y - 23, 90, 46, 13);
+    this.graphics
+      .lineStyle(3, 0x88652e)
+      .beginPath()
+      .moveTo(x - 9, y + 3)
+      .lineTo(x, y - 7)
+      .lineTo(x + 9, y + 3)
+      .strokePath();
+    this.graphics.lineStyle(2, 0xa57938, 0.5).lineBetween(x, y + 30, x, y + 65);
+  }
+
+  clear(): void {
+    this.images.forEach((image) => image.destroy());
+    this.images.clear();
+    this.graphics.clear();
   }
 }
