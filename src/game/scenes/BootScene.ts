@@ -2,99 +2,75 @@ import Phaser from "phaser";
 import { cameraPanel } from "../../input/cv/cameraPanel";
 import { keyboard } from "../../input/defaultInput";
 import { inputManager } from "../../input/inputManager";
+import { gameUi } from "../../ui/gameUi";
 import { MenuConfirm } from "../menuConfirm";
+import { loadGameArt } from "../rendering/assets";
+import { bestScore } from "../storage";
 
 export class BootScene extends Phaser.Scene {
-  private badge!: Phaser.GameObjects.Text;
   private confirm!: MenuConfirm;
-  private title!: Phaser.GameObjects.Text;
-  private copy!: Phaser.GameObjects.Text;
-  private button!: Phaser.GameObjects.Text;
   private stage: "menu" | "controls" = "menu";
+  private artFailed = false;
+  private inputSource = inputManager.getSource();
+
   constructor() {
     super("Boot");
+  }
+
+  preload(): void {
+    this.artFailed = false;
+    const showArtError = () => {
+      this.artFailed = true;
+      gameUi.setArtError();
+    };
+    this.load.once("loaderror", showArtError);
+    this.load.once("complete", () => this.load.off("loaderror", showArtError));
+    loadGameArt(this);
   }
 
   create(): void {
     cameraPanel.setMode("large");
     this.stage = "menu";
+    this.inputSource = inputManager.getSource();
     this.confirm = new MenuConfirm(inputManager.getState());
-    this.cameras.main.setBackgroundColor("#183e46");
-    this.title = this.add
-      .text(640, 230, "FLAPPY ARMS", {
-        fontFamily: "Arial, sans-serif",
-        fontSize: "72px",
-        color: "#fff4dc",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-    this.copy = this.add
-      .text(
-        640,
-        340,
-        "Your arms are the controller.\nKitchen, Dessert, Bird Heaven. Keep flying as the world loops.",
-        {
-          fontFamily: "Arial, sans-serif",
-          fontSize: "28px",
-          color: "#b7dbd7",
-          align: "center",
-        },
-      )
-      .setOrigin(0.5);
-    this.badge = this.add.text(36, 32, "KEYBOARD MODE", {
-      fontSize: "16px",
-      color: "#b7dbd7",
-    });
-    this.button = this.add
-      .text(640, 480, this.buttonText("START"), {
-        fontSize: "26px",
-        color: "#183e46",
-        backgroundColor: "#ffd46b",
-        align: "center",
-        padding: { x: 32, y: 18 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    this.button.on("pointerdown", () => this.advance());
+    gameUi.setArtReady(!this.artFailed);
+    gameUi.showMenu(bestScore.get());
+    const removeActions = [
+      gameUi.onAction("advance", () => this.advance()),
+      gameUi.onAction("back", () => this.back()),
+    ];
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+      removeActions.forEach((remove) => remove()),
+    );
   }
 
   private advance(): void {
+    const input = inputManager.getState();
+    if (this.artFailed || !input.tracking || !input.calibrated) {
+      return;
+    }
     if (this.stage === "controls") {
       this.scene.start("Game");
       return;
     }
     this.stage = "controls";
-    this.title.setText("HOW TO FLY").setFontSize(60).setY(150);
-    this.copy.setY(325);
-    this.button.setY(530);
-    this.copy.setText(
-      this.cameraMode()
-        ? "Small flaps with both arms make you rise.\nMove your head into LEFT or RIGHT to turn.\nReturn to STAY to reset, keeping your lane.\n\nMenus: palms together to select.\nSeparate hands to reset."
-        : "Tap Space to flap and rise.\nTap left or right to change one lane.\nYour lane stays put when you release.\n\nMenus: press Enter to select.",
-    );
-    this.button.setText(this.buttonText("GOT IT!"));
+    gameUi.showControls();
   }
 
-  private cameraMode(): boolean {
-    return inputManager.getState() !== keyboard.getState();
-  }
-
-  private buttonText(label: string): string {
-    if (!this.cameraMode()) {
-      return `${label}\nJump or press Enter`;
-    }
-    return inputManager.getState().calibrated
-      ? `${label}\nBring your palms together`
-      : "Keep your upper body in view\nto calibrate";
+  private back(): void {
+    this.stage = "menu";
+    this.confirm = new MenuConfirm(inputManager.getState());
+    gameUi.showMenu(bestScore.get());
   }
 
   update(): void {
-    const state = inputManager.getState();
-    this.badge.setVisible(state === keyboard.getState());
-    this.button.setText(
-      this.buttonText(this.stage === "menu" ? "START" : "GOT IT!"),
-    );
-    if (this.confirm.read(state)) {
+    const input = inputManager.getState();
+    if (this.inputSource !== inputManager.getSource()) {
+      this.inputSource = inputManager.getSource();
+      this.confirm = new MenuConfirm(input);
+    }
+    gameUi.updateInput(input, input !== keyboard.getState());
+    if (this.confirm.read(input)) {
       this.advance();
     }
   }

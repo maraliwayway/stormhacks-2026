@@ -130,6 +130,10 @@ try {
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Boot").stage === "controls",
   );
+  await page.waitForFunction(() => {
+    const scene = window.testGame.scene.getScene("Boot");
+    return scene.inputSource === window.testManager.getSource();
+  });
   const preview = await page.evaluate(async () => {
     const { mountCameraPanel } = await import("/src/input/cv/cameraPanel.ts");
     const { previewBounds } = await import("/src/input/cv/previewBounds.ts");
@@ -154,21 +158,32 @@ try {
       video,
       document.getElementById("game"),
     );
-    const scene = window.testGame.scene.getScene("Boot");
+    const heading = document
+      .querySelector(".controls-intro h1")
+      .getBoundingClientRect();
+    const copy = document
+      .querySelector(".controls-description")
+      .getBoundingClientRect();
+    const lesson = document
+      .querySelector(".lesson-cards")
+      .getBoundingClientRect();
+    const button = document
+      .querySelector(".controls-actions .primary-button")
+      .getBoundingClientRect();
+    const slot = document
+      .querySelector(".setup-camera")
+      .getBoundingClientRect();
     return {
       videoWidth: video.videoWidth,
       videoHeight: video.videoHeight,
       objectFit: video.style.objectFit,
       bounds: previewBounds(video, 640, 480),
-      titleBottom: scene.title.getBounds().bottom,
-      copyTop: scene.copy.getBounds().top,
-      copyBottom: scene.copy.getBounds().bottom,
-      buttonTop: scene.button.getBounds().top,
-      lastLineRight:
-        scene.copy.x +
-        scene.copy.context.measureText(scene.copy.text.split("\n").at(-1))
-          .width /
-          2,
+      titleBottom: heading.bottom,
+      copyTop: copy.top,
+      lessonBottom: lesson.bottom,
+      buttonTop: button.top,
+      copyRight: copy.right,
+      previewLeft: slot.left,
     };
   });
   assert.equal(preview.videoWidth, 1280);
@@ -176,10 +191,10 @@ try {
   assert.equal(preview.objectFit, "contain");
   assert.deepEqual(preview.bounds, { x: 0, y: 60, width: 640, height: 360 });
   assert.ok(preview.titleBottom < preview.copyTop);
-  assert.ok(preview.copyBottom < preview.buttonTop);
+  assert.ok(preview.lessonBottom < preview.buttonTop);
   assert.ok(
-    preview.lastLineRight < 856,
-    "camera clears the last controls line",
+    preview.copyRight < preview.previewLeft,
+    "camera clears the controls copy",
   );
   await page.waitForTimeout(300);
   await page.screenshot({ path: "test-results/head-controls.png" });
@@ -368,18 +383,18 @@ try {
     return {
       altitude: scene.flight.altitude,
       camera: scene.flight.cameraY,
-      badge: scene.badge.visible,
+      mode: document.querySelector("[data-flight-mode]").textContent.trim(),
     };
   });
   assert.ok(flight.camera < 0);
-  assert.equal(flight.badge, false);
+  assert.equal(flight.mode, "Camera");
   const pickupEnabled = await page.evaluate(
-    () => window.testGame.scene.getScene("Game").wormHud.visible,
+    () => !document.querySelector("[data-worm-total]").hidden,
   );
   if (pickupEnabled) {
     const previous = await page.evaluate(() => {
       const scene = window.testGame.scene.getScene("Game");
-      const before = scene.wormHud.text;
+      const before = document.querySelector("[data-worm-total]").textContent;
       scene.worms.items = [
         {
           id: 9999,
@@ -393,7 +408,7 @@ try {
     });
     await page.waitForFunction(
       (before) =>
-        window.testGame.scene.getScene("Game").wormHud.text !== before,
+        document.querySelector("[data-worm-total]").textContent !== before,
       previous,
     );
     assert.equal(
@@ -426,7 +441,9 @@ try {
   await page.evaluate(() => {
     window.testInput.strafe = 0;
   });
-  await page.waitForTimeout(50);
+  await page.waitForFunction(
+    () => window.testGame.scene.getScene("Game").flight.strafeDirection === 0,
+  );
   await page.evaluate(() => {
     window.testInput.strafe = 0.25;
   });
@@ -482,9 +499,9 @@ try {
   );
   assert.equal(
     await page.evaluate(
-      () => window.testGame.scene.getScene("Game").levelHud.text,
+      () => document.querySelector("[data-world-name]").textContent,
     ),
-    "DESSERT",
+    "Dessert",
   );
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.screenshot({ path: "test-results/dessert.png" });
@@ -510,11 +527,11 @@ try {
         level: scene.level.id,
         phase: scene.phase,
         altitude: scene.flight.altitude,
-        score: scene.score.text,
+        score: `${document.querySelector("[data-altitude]").textContent} m`,
         hazards: scene.hazards.items.length,
         enemies: scene.enemies.items.length,
         worms: scene.worms.items.length,
-        hint: scene.hint.text,
+        hint: scene.hint,
         hazardLead: hazard
           ? scene.flight.y -
             BIRD_BOX.height / 2 -
@@ -565,9 +582,9 @@ try {
   assert.deepEqual([heaven.hazards, heaven.enemies, heaven.worms], [0, 0, 0]);
   assert.equal(
     await page.evaluate(
-      () => window.testGame.scene.getScene("Game").levelHud.text,
+      () => document.querySelector("[data-world-name]").textContent,
     ),
-    "BIRD HEAVEN",
+    "Bird Heaven",
   );
   await page.screenshot({ path: "test-results/heaven.png" });
   assert.equal((await visit(135)).level, "heaven");
