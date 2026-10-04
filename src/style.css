@@ -323,11 +323,20 @@ h2:focus {
 }
 
 /* Rules and best score sit level with the middle of the mirror. */
-.tips {
+.rules {
   grid-column: 1;
   grid-row: 2;
   align-self: center;
   justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2.4cqh;
+}
+.warmup-button {
+  font-size: 3cqh;
+}
+.tips {
   display: flex;
   flex-direction: column;
   gap: 2.6cqh;
@@ -592,6 +601,41 @@ h2:focus {
   font-family: var(--display);
   font-size: 4.4cqh;
   transform: rotate(-6deg);
+}
+
+.warmup {
+  width: 76cqh;
+  gap: 1.2cqh;
+  padding: 3cqh 4.5cqh;
+  text-align: left;
+  align-items: stretch;
+}
+.warmup h2 {
+  font-size: 7cqh;
+  text-align: center;
+}
+.routine,
+.links {
+  margin: 0;
+  padding-left: 1.4em;
+  line-height: 1.35;
+}
+.safety {
+  color: var(--red);
+}
+.links a {
+  color: var(--ink);
+  text-decoration-thickness: 0.25cqh;
+  text-underline-offset: 0.4cqh;
+}
+.links a:hover {
+  color: var(--red);
+}
+.warmup .dialog-hint {
+  justify-content: center;
+}
+.warmup .button {
+  align-self: center;
 }
 
 /* ---------- Motion ---------- */

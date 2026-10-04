@@ -57,6 +57,7 @@ export function mountCameraPanel(
     const hidden =
       requested === "hidden" ||
       ui?.dataset.view === "paused" ||
+      ui?.dataset.view === "warmup" ||
       ui?.dataset.view === "results";
     if (!slot || hidden) {
       root.dataset.mode = "hidden";

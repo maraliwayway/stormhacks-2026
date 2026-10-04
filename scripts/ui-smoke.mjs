@@ -106,6 +106,30 @@ try {
   assert.equal(await page.locator("[data-action=advance]").isDisabled(), false);
   await page.screenshot({ path: "test-results/ui-title.png" });
 
+  // Warm-up card: safe links in a new tab; palms together closes it without starting.
+  await page.getByRole("button", { name: "Warm up first" }).click();
+  const warmup = page.getByRole("dialog", { name: "warm up" });
+  await warmup.waitFor();
+  const links = await warmup
+    .locator("a")
+    .evaluateAll((anchors) =>
+      anchors.map((anchor) => [anchor.href, anchor.target, anchor.rel]),
+    );
+  assert.equal(links.length, 3);
+  for (const [href, target, rel] of links) {
+    assert.match(href, /^https:\/\/www\.(nhs\.uk|youtube\.com)\//);
+    assert.equal(target, "_blank");
+    assert.match(rel, /noopener/);
+  }
+  await page.screenshot({ path: "test-results/ui-warmup.png" });
+  await page.evaluate(() => window.pose.selectCount++);
+  await warmup.waitFor({ state: "detached" });
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.isActive("Game")),
+    false,
+    "closing the warm-up card does not start a run",
+  );
+
   // Palms together starts the run.
   await page.evaluate(() => window.pose.selectCount++);
   await page.waitForFunction(() => window.testGame.scene.isActive("Game"));
@@ -254,7 +278,7 @@ try {
     true,
   );
   console.log(
-    "UI checks passed: camera requested on load, blocked-camera retry, sound unlock and mute, keys ignored, palms-together start, world banner, pause button, discarded paused flaps, prayer resume, blur pause, lost-tracking card, results reasons, play again by button and prayer, menu, five window sizes, no page scroll, asset failure, no runtime errors.",
+    "UI checks passed: camera requested on load, blocked-camera retry, sound unlock and mute, keys ignored, warm-up card and links, palms-together start, world banner, pause button, discarded paused flaps, prayer resume, blur pause, lost-tracking card, results reasons, play again by button and prayer, menu, five window sizes, no page scroll, asset failure, no runtime errors.",
   );
 } finally {
   await browser?.close();
