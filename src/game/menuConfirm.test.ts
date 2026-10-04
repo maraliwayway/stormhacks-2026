@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { EMPTY_INPUT } from '../input/types';
 import { MenuConfirm } from './menuConfirm';
-import { levelAt, hasWon } from './levels';
 
 const ready = { ...EMPTY_INPUT, tracking: true, calibrated: true };
 describe('storyboard navigation', () => {
@@ -23,11 +22,5 @@ describe('storyboard navigation', () => {
     const confirm = new MenuConfirm(ready);
     expect(confirm.read({ ...ready, tracking: false, jump: true })).toBe(false);
     expect(confirm.read({ ...ready, jump: true })).toBe(false);
-  });
-  it('keeps continuous altitude at both level boundaries', () => {
-    expect(levelAt(59.99).id).toBe('kitchen');
-    expect(levelAt(60).id).toBe('dessert');
-    expect(hasWon(119.99)).toBe(false);
-    expect(hasWon(120)).toBe(true);
   });
 });

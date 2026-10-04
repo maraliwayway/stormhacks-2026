@@ -9,7 +9,7 @@ import { EnemyField, WARNING_SECONDS, STRIKE_SECONDS, RETREAT_SECONDS } from '..
 import { installVfx } from '../vfx';
 import { WormField, wormBalance } from '../worms';
 import { MenuConfirm } from '../menuConfirm';
-import { levelAt, hasWon } from '../levels';
+import { levelAt } from '../levels';
 import { cameraPanel } from '../../input/cv/cameraPanel';
 
 const WORMS_ENABLED = import.meta.env.VITE_ENABLE_WORMS === 'true';
@@ -22,7 +22,7 @@ export class GameScene extends Phaser.Scene {
   protected badge!: Phaser.GameObjects.Text;
   protected hint!: Phaser.GameObjects.Text;
   protected started = 0;
-  protected phase: 'playing' | 'dying' | 'over' | 'won' = 'playing';
+  protected phase: 'playing' | 'dying' | 'over' = 'playing';
   private lastMilestone = 0;
   protected hazards!: HazardField;
   protected hazardArt!: Phaser.GameObjects.Graphics;
@@ -117,7 +117,7 @@ export class GameScene extends Phaser.Scene {
     const input = inputManager.getState();
     this.badge.setVisible(input === keyboard.getState());
     const confirmed = this.confirm.read(input);
-    if (this.phase === 'over' || this.phase === 'won') {
+    if (this.phase === 'over') {
       if (confirmed) { this.scene.start('Boot'); return; }
       if (input.flapCount < this.overBaseline) this.overBaseline = input.flapCount;
       if (this.phase === 'over' && input.tracking && input.calibrated && input.flapCount > this.overBaseline) this.scene.restart();
@@ -149,15 +149,24 @@ export class GameScene extends Phaser.Scene {
         ? 'Tap Space to flap   •   Left / right to glide'
         : 'Flap both arms to rise   •   Lean left / right to glide');
     const nextLevel = levelAt(this.flight.altitude);
-    if (nextLevel.id !== this.level.id) {
+    if (nextLevel.start !== this.level.start) {
       this.level = nextLevel;
       this.levelHud.setText(nextLevel.label);
       this.flight.velocity = Math.min(this.flight.velocity, -FLIGHT.impulse);
       gameEvents.emit('level_start', { level: nextLevel.id, altitude: this.flight.altitude });
     }
-    if (hasWon(this.flight.altitude)) { this.winRun(); return; }
     this.drawBackdrop();
-    if (input.tracking && input.calibrated) {
+    if (this.level.id === 'heaven') {
+      // Consume Heaven's rows so they cannot reappear on returning to Kitchen.
+      // Keep the same world, seed, run, and adaptive difficulty across every lap.
+      this.hazards.advance(this.flight.cameraY);
+      this.hazards.items = [];
+      this.enemies.items = [];
+      this.worms.items = [];
+      this.hazardArt.clear();
+      this.enemyArt.clear();
+      this.wormArt.clear();
+    } else if (input.tracking && input.calibrated) {
       const birdBox = { x: this.flight.x, y: this.flight.y, ...BIRD_BOX };
       this.enemies.tick(this.flight.altitude, this.flight.cameraY, Math.min(delta, 50) / 1000, undefined, birdBox);
       // A cat beat reserves a clear flight corridor in all three lanes.
@@ -224,21 +233,6 @@ export class GameScene extends Phaser.Scene {
       fontSize: '24px', color: '#183e46', backgroundColor: '#ffd46b', padding: { x: 24, y: 12 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.scene.start('Boot'));
-  }
-
-  private winRun(): void {
-    this.phase = 'won';
-    this.confirm = new MenuConfirm(inputManager.getState());
-    bestScore.set(Math.max(bestScore.get(), this.flight.altitude));
-    const duration = (this.time.now - this.started) / 1000;
-    gameEvents.emit('win', { altitude: this.flight.altitude, duration });
-    gameEvents.emit('run_end', { altitude: this.flight.altitude, duration });
-    this.add.rectangle(640, 360, 1280, 720, 0x183e46, 0.85).setScrollFactor(0).setDepth(39);
-    this.add.text(640, 300, `BIRD HEAVEN\nYou made it!\n\n${this.confirmHint()} for main menu`, {
-      fontSize: '42px', color: '#fff4dc', align: 'center',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(40);
-    this.menuButton();
-    this.confetti();
   }
 
   private drawHazards(): void {
@@ -340,6 +334,35 @@ export class GameScene extends Phaser.Scene {
   private drawBackdrop(): void {
     const g = this.backdrop;
     g.clear();
+    if (this.level.id === 'heaven') {
+      this.cameras.main.setBackgroundColor('#dceefa');
+      g.fillStyle(0xc6e4f4).fillRect(70, 0, 1140, 720);
+      // A golden halo and layered clouds make Heaven a playable sky map.
+      g.fillStyle(0xfff3c9, 0.65).fillCircle(1010, 160, 100);
+      g.lineStyle(5, 0xe7bd67, 0.8).strokeEllipse(1010, 160, 140, 46);
+      for (let layer = 0; layer < 2; layer++) {
+        const offset = ((-this.flight.cameraY * (0.2 + layer * 0.15)) % 260 + 260) % 260;
+        for (let row = -1; row < 4; row++) {
+          const y = row * 260 + offset;
+          for (let col = 0; col < 3; col++) {
+            const x = 220 + col * 370 + (row % 2) * 60;
+            g.fillStyle(0xffffff, layer === 0 ? 0.45 : 0.9)
+              .fillEllipse(x, y + layer * 65, 210, 52)
+              .fillCircle(x - 45, y + layer * 65 - 18, 34)
+              .fillCircle(x + 10, y + layer * 65 - 30, 46)
+              .fillCircle(x + 65, y + layer * 65 - 12, 30);
+          }
+        }
+      }
+      g.lineStyle(2, 0xe7bd67, 0.7);
+      for (let i = 0; i < 9; i++) {
+        const x = 150 + i * 120;
+        const y = ((i * 83 - this.flight.cameraY * 0.1) % 650 + 650) % 650 + 30;
+        g.lineBetween(x - 5, y, x + 5, y).lineBetween(x, y - 5, x, y + 5);
+      }
+      return;
+    }
+    this.cameras.main.setBackgroundColor('#f5dfb5');
     g.fillStyle(this.level.id === 'dessert' ? 0xf7c4d5 : 0xe7c99b).fillRect(70, 0, 1140, 720);
     g.lineStyle(2, this.level.id === 'dessert' ? 0xda86a5 : 0xdbc08f, 0.6);
     for (let x = 100; x < 1280; x += 120) g.lineBetween(x, 0, x, 720);

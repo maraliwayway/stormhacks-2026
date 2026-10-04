@@ -21,7 +21,7 @@ export class BootScene extends Phaser.Scene {
     this.title = this.add.text(640, 230, 'FLAPPY ARMS', {
       fontFamily: 'Arial, sans-serif', fontSize: '72px', color: '#fff4dc', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.copy = this.add.text(640, 340, 'Your arms are the controller.\nFly through the Kitchen and Dessert to Bird Heaven.', {
+    this.copy = this.add.text(640, 340, 'Your arms are the controller.\nKitchen, Dessert, Bird Heaven. Keep flying as the world loops.', {
       fontFamily: 'Arial, sans-serif', fontSize: '28px', color: '#b7dbd7', align: 'center',
     }).setOrigin(0.5);
     this.badge = this.add.text(36, 32, 'KEYBOARD MODE', { fontSize: '16px', color: '#b7dbd7' });

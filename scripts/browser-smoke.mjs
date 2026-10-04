@@ -19,7 +19,7 @@ try {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto(url);
+  await page.goto(`${url}/?kb`);
   await page.waitForSelector('canvas');
   await page.evaluate(async () => {
     const { game } = await import('/src/main.ts');
@@ -147,19 +147,68 @@ try {
   assert.equal(await page.evaluate(() => window.testGame.scene.getScene('Game').levelHud.text), 'DESSERT');
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.screenshot({ path: 'test-results/dessert.png' });
-  await page.evaluate(() => {
+  // Real scene transitions keep one run alive through Heaven and multiple laps.
+  await page.evaluate(async () => {
+    window.testGame.scene.pause('Game');
+    const { FLIGHT } = await import('/src/game/flight.ts');
+    const { HazardField } = await import('/src/game/hazards.ts');
+    const { EnemyField } = await import('/src/game/enemies.ts');
+    window.levelEvents = [];
+    const { gameEvents } = await import('/src/game/events.ts');
+    gameEvents.on('level_start', event => window.levelEvents.push(event.level));
+    window.visitAltitude = altitude => {
+      const scene = window.testGame.scene.getScene('Game');
+      scene.flight.y = FLIGHT.startY - altitude * FLIGHT.pixelsPerMetre;
+      scene.flight.velocity = -100;
+      scene.update(0, 16);
+      return { level: scene.level.id, phase: scene.phase, altitude: scene.flight.altitude,
+        score: scene.score.text, hazards: scene.hazards.items.length, enemies: scene.enemies.items.length,
+        worms: scene.worms.items.length };
+    };
+    window.restoreFields = () => {
+      const scene = window.testGame.scene.getScene('Game');
+      scene.hazards.advance = HazardField.prototype.advance;
+      scene.enemies.tick = EnemyField.prototype.tick;
+    };
+    // Carry an existing obstacle, paw and pickup into Heaven: all must clear.
     const scene = window.testGame.scene.getScene('Game');
-    scene.flight.y = 550 - 120 * 40;
-    scene.flight.velocity = -100;
+    scene.hazards.items = [{ id: 100, x: 640, y: FLIGHT.startY - 120 * FLIGHT.pixelsPerMetre,
+      width: 96, height: 62, kind: 'pot', passed: false }];
+    scene.enemies.items = [{ kind: 'cat-paw', lane: 1, x: 640, y: 0, width: 220, height: 720,
+      age: 1.1, faceOffset: 200, strikeChecked: false, crossedStrike: true }];
+    scene.worms.items = [{ id: 100, x: 640, y: 0, width: 42, height: 30 }];
   });
-  await page.waitForFunction(() => window.testGame.scene.getScene('Game').phase === 'won');
-  await page.waitForTimeout(100);
-  assert.deepEqual(await page.evaluate(() => [window.winEvents, window.endEvents]), [1, 1]);
-  await page.screenshot({ path: 'test-results/victory.png' });
-  await page.evaluate(() => { window.testInput.jump = true; });
-  await page.waitForFunction(() => window.testGame.scene.isActive('Boot'));
-  await page.waitForTimeout(100);
-  assert.equal(await page.evaluate(() => window.testGame.scene.getScene('Boot').stage), 'menu');
+  const visit = altitude => page.evaluate(altitude => window.visitAltitude(altitude), altitude);
+  const heaven = await visit(120);
+  assert.equal(heaven.level, 'heaven');
+  assert.equal(heaven.phase, 'playing');
+  assert.deepEqual([heaven.hazards, heaven.enemies, heaven.worms], [0, 0, 0]);
+  assert.equal(await page.evaluate(() => window.testGame.scene.getScene('Game').levelHud.text), 'BIRD HEAVEN');
+  await page.screenshot({ path: 'test-results/heaven.png' });
+  assert.equal((await visit(135)).level, 'heaven');
+  // Check obstacle resumption separately from the cat's intentional clear corridor.
+  await page.evaluate(async () => {
+    const { HazardField } = await import('/src/game/hazards.ts');
+    window.testGame.scene.getScene('Game').hazards.advance = HazardField.prototype.advance;
+  });
+  const kitchenAgain = await visit(150);
+  assert.equal(kitchenAgain.level, 'kitchen');
+  assert.equal(kitchenAgain.phase, 'playing');
+  assert.equal(kitchenAgain.score, '150 m');
+  assert.ok(kitchenAgain.hazards > 0, 'obstacles resume after Heaven');
+  await page.screenshot({ path: 'test-results/kitchen-loop.png' });
+  assert.equal((await visit(210)).level, 'dessert');
+  assert.equal((await visit(270)).level, 'heaven');
+  await page.evaluate(() => window.restoreFields());
+  const thirdKitchen = await visit(300);
+  assert.equal(thirdKitchen.level, 'kitchen');
+  assert.equal(thirdKitchen.phase, 'playing');
+  assert.ok(thirdKitchen.enemies > 0, 'cats resume after Heaven');
+  assert.deepEqual(await page.evaluate(() => window.levelEvents), ['heaven', 'kitchen', 'dessert', 'heaven', 'kitchen']);
+  assert.deepEqual(await page.evaluate(() => [window.winEvents, window.endEvents]), [0, 0]);
+  await page.evaluate(() => window.testGame.scene.getScene('Game').finishRun('test'));
+  assert.deepEqual(await page.evaluate(() => [window.winEvents, window.endEvents]), [0, 1]);
+  assert.ok(Number(await page.evaluate(() => localStorage.getItem('flappy-arms.best-altitude'))) >= 300);
   // Isolate the authored encounter while running the real scene and renderer.
   await page.evaluate(async () => {
     window.testInput = { ...window.testEmpty, tracking: true, calibrated: true };
@@ -199,7 +248,7 @@ try {
   await page.evaluate(() => { window.testGame.scene.getScene('Game').flight.x = 640; });
   assert.equal((await catStep(1)).phase, 'dying');
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, victory, menu return, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, no runtime errors.');
+  console.log('Browser checks passed: canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, no runtime errors.');
 } finally {
   await browser?.close();
   await server.close();

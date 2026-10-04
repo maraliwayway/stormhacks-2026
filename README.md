@@ -64,9 +64,9 @@ One branch and pull request per ticket. Use commit titles such as `feat(FA-1): s
 
 ## Storyboard flow
 
-Jump, press Enter, or click Start to see the controls. Confirm again to fly. Space flaps in keyboard mode and left/right arrows change lanes. After a death, flap to retry or jump/Enter to return to the menu. Victory returns to the menu with jump/Enter or the Main Menu button.
+Jump, press Enter, or click Start to see the controls. Confirm again to fly. Space flaps in keyboard mode and left/right arrows change lanes. After a death, flap to retry or jump/Enter to return to the menu. Heaven continues into the next circuit without a victory screen.
 
-Kitchen runs from 0 to 60 metres and Dessert from 60 to 120 metres. These are provisional demo distances in `src/game/levels.ts`. Altitude and score continue across the level boundary. Each level starts with a lift boost. Reaching 120 metres wins the run in Bird Heaven. `level_start` and `win` events are available to the voice director.
+Kitchen runs from 0 to 60 metres, Dessert from 60 to 120, and Bird Heaven from 120 to 150. At 150 metres the map returns to Kitchen and repeats this circuit indefinitely. These distances live in `src/game/levels.ts`. Altitude, score, pickups and difficulty carry across every loop. Each level starts with a lift boost. Heaven has scrolling clouds, a golden halo and a clear flight path for a short breather. Keep flapping to avoid falling. `level_start` includes Heaven and fires on every transition. Reaching Heaven does not end the run or emit `win`. Death ends the run and submits its accumulated score.
 
 The browser game targets a laptop. Native desktop packaging, slots, inventory, powerups, final art, and live encouragement need their respective team integrations. Multiplayer and daily streaks are excluded as shown in the MVP storyboard. The designer's reference calls for clean 2D shapes, bright contrasting colours, and medium pencil-textured outlines. Current art is drawn placeholder art with medium outlines; final texture assets come from the designer.
 
