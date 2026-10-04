@@ -212,7 +212,7 @@ try {
   // Step the paused scene through Heaven and multiple laps without ending the run.
   await page.evaluate(async () => {
     const { FLIGHT } = await import('/src/game/flight.ts');
-    const { HazardField } = await import('/src/game/hazards.ts');
+    const { HazardField, BIRD_BOX } = await import('/src/game/hazards.ts');
     const { EnemyField, WARNING_SECONDS } = await import('/src/game/enemies.ts');
     window.levelEvents = [];
     const { gameEvents } = await import('/src/game/events.ts');
@@ -222,9 +222,11 @@ try {
       scene.flight.y = FLIGHT.startY - altitude * FLIGHT.pixelsPerMetre;
       scene.flight.velocity = -100;
       scene.update(0, 16);
+      const hazard = scene.hazards.items[0];
       return { level: scene.level.id, phase: scene.phase, altitude: scene.flight.altitude,
         score: scene.score.text, hazards: scene.hazards.items.length, enemies: scene.enemies.items.length,
-        worms: scene.worms.items.length };
+        worms: scene.worms.items.length, hint: scene.hint.text,
+        hazardLead: hazard ? scene.flight.y - BIRD_BOX.height / 2 - (hazard.y + hazard.height / 2) : null };
     };
     window.restoreFields = () => {
       const scene = window.testGame.scene.getScene('Game');
@@ -258,6 +260,8 @@ try {
   assert.equal(kitchenAgain.phase, 'playing');
   assert.equal(kitchenAgain.score, '150 m');
   assert.equal(kitchenAgain.hazards, 1, 'one obstacle resumes after Heaven');
+  assert.ok(kitchenAgain.hazardLead >= 2500, 'obstacles resume with a full reaction gap');
+  assert.match(kitchenAgain.hint, /Obstacle ahead in the .* lane/, 'the blocked lane is announced before entering view');
   await page.screenshot({ path: 'test-results/kitchen-loop.png' });
   assert.equal((await visit(210)).level, 'dessert');
   assert.equal((await visit(270)).level, 'heaven');

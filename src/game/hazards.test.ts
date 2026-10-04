@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { HazardField, HAZARD_ROW_SPACING, overlaps } from './hazards';
+import { FLIGHT } from './flight';
+import { HazardField, HAZARD_ROW_SPACING, HAZARD_MIN_LEAD, HAZARD_REACTION_SECONDS, BIRD_BOX, overlaps } from './hazards';
 
 describe('hazards', () => {
   it('replays seeded rows and never retains more than one obstacle', () => {
@@ -19,7 +20,7 @@ describe('hazards', () => {
   it('spaces obstacles beyond one screen and handles camera jumps without a backlog', () => {
     const field = new HazardField(42);
     field.advance(0);
-    expect(field.items[0].y).toBe(-100);
+    expect(field.items[0].y).toBeLessThan(360 - HAZARD_MIN_LEAD);
     const rows = new Map<number, number>();
     for (let camera = 0; camera > -10000; camera -= 50) {
       field.advance(camera);
@@ -34,18 +35,45 @@ describe('hazards', () => {
     expect(HAZARD_ROW_SPACING).toBeGreaterThan(720 + 62);
     field.advance(-50000);
     expect(field.items).toHaveLength(1);
-    expect(field.items[0].y).toBeLessThan(-50000 + 720 + 31);
+    expect(field.items[0].y).toBeLessThan(-50000 + 360 - HAZARD_MIN_LEAD);
   });
 
-  it('clears every obstacle for a cat beat without respawning skipped rows', () => {
+  it('clears every obstacle for a cat and resumes with a fresh safe lead distance', () => {
     const field = new HazardField();
-    field.advance(-600, -240);
+    field.advance(0, undefined, 550);
+    const firstId = field.items[0].id;
+    field.advance(-600, -240, -240);
     expect(field.items).toHaveLength(0);
-    const reservedIds = new Set(field.items.map(h => h.id));
-    field.advance(-600);
-    expect(new Set(field.items.map(h => h.id))).toEqual(reservedIds);
-    field.advance(-10000);
-    expect(field.items.length).toBeGreaterThan(0);
+    field.advance(-600, undefined, -240);
+    // A fresh distant row can resume; consumed rows cannot return.
+    expect(field.items).toHaveLength(1);
+    expect(field.items[0].id).toBeGreaterThan(firstId);
+    expect(-240 - BIRD_BOX.height / 2 - (field.items[0].y + field.items[0].height / 2)).toBeGreaterThanOrEqual(HAZARD_MIN_LEAD);
+    field.advance(-10000, undefined, -9640);
+    expect(field.items).toHaveLength(1);
+    expect(field.items[0].id).toBeGreaterThan(firstId);
+    const h = field.items[0];
+    expect(-9640 - BIRD_BOX.height / 2 - (h.y + h.height / 2)).toBeGreaterThanOrEqual(HAZARD_MIN_LEAD);
+  });
+
+  it('gives every new obstacle at least 2.5 seconds of lead at maximum climb speed', () => {
+    const field = new HazardField();
+    let previousId = -1;
+    let spawned = 0;
+    for (let frame = 0; frame < 1800; frame++) {
+      const birdY = FLIGHT.startY - frame * FLIGHT.maxRise / 60;
+      const camera = Math.min(0, birdY - 360);
+      field.advance(camera, undefined, birdY);
+      const h = field.items[0];
+      if (h && h.id !== previousId) {
+        const gap = birdY - BIRD_BOX.height / 2 - (h.y + h.height / 2);
+        expect(gap / FLIGHT.maxRise).toBeGreaterThanOrEqual(HAZARD_REACTION_SECONDS);
+        expect(field.check({ x: h.x, y: birdY, ...BIRD_BOX }).hit).toBeUndefined();
+        previousId = h.id;
+        spawned++;
+      }
+    }
+    expect(spawned).toBeGreaterThan(5);
   });
 
   it('forgives sprite edges and emits a near miss only once per hazard', () => {

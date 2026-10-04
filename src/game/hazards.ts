@@ -22,6 +22,8 @@ export function seededRandom(seed: number): () => number {
 
 const PATTERNS = [[0], [2], [1]];
 export const HAZARD_ROW_SPACING = 900;
+export const HAZARD_REACTION_SECONDS = 2.5;
+export const HAZARD_MIN_LEAD = FLIGHT.maxRise * HAZARD_REACTION_SECONDS;
 const KINDS = ['pot', 'knife', 'pin'] as const;
 
 export class HazardField {
@@ -32,11 +34,13 @@ export class HazardField {
 
   constructor(seed = 2026) { this.random = seededRandom(seed); }
 
-  advance(cameraY: number, catBirdY?: number): void {
+  advance(cameraY: number, catBirdY?: number, birdY = cameraY + 360): void {
     // Only one obstacle exists at a time. Cats reserve the entire screen.
     this.items = catBirdY !== undefined ? [] : this.items.filter(item =>
       item.y - item.height / 2 < cameraY + FLIGHT.height).slice(0, 1);
-    while (this.nextY > cameraY - 500) {
+    // Look beyond the reaction gap to find a safe upcoming row even after a camera jump.
+    const horizon = birdY - BIRD_BOX.height / 2 - HAZARD_MIN_LEAD - HAZARD_ROW_SPACING - 62 / 2;
+    while (this.nextY > horizon || (catBirdY === undefined && this.items.length === 0)) {
       const pattern = PATTERNS[Math.floor(this.random() * PATTERNS.length)];
       for (const lane of pattern) {
         const kind = KINDS[Math.floor(this.random() * KINDS.length)];
@@ -47,7 +51,7 @@ export class HazardField {
         };
         // Consume skipped rows so they cannot appear later after a cat or camera jump.
         if (catBirdY === undefined && this.items.length === 0
-          && item.y - item.height / 2 < cameraY + FLIGHT.height) this.items.push(item);
+          && item.y + item.height / 2 <= birdY - BIRD_BOX.height / 2 - HAZARD_MIN_LEAD) this.items.push(item);
       }
       this.nextY -= HAZARD_ROW_SPACING;
     }

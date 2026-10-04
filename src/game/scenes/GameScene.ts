@@ -160,7 +160,7 @@ export class GameScene extends Phaser.Scene {
     if (this.level.id === 'heaven') {
       // Consume Heaven's rows so they cannot reappear on returning to Kitchen.
       // Keep the same world, seed, run, and adaptive difficulty across every lap.
-      this.hazards.advance(this.flight.cameraY);
+      this.hazards.advance(this.flight.cameraY, this.flight.y, this.flight.y);
       this.hazards.items = [];
       this.enemies.items = [];
       this.worms.items = [];
@@ -171,7 +171,7 @@ export class GameScene extends Phaser.Scene {
       const birdBox = { x: this.flight.x, y: this.flight.y, ...BIRD_BOX };
       this.enemies.tick(this.flight.altitude, this.flight.cameraY, Math.min(delta, 50) / 1000, undefined, birdBox);
       // A cat beat clears all map obstacles so only one threat is active.
-      this.hazards.advance(this.flight.cameraY, this.enemies.items.length ? this.flight.y : undefined);
+      this.hazards.advance(this.flight.cameraY, this.enemies.items.length ? this.flight.y : undefined, this.flight.y);
       const result = this.hazards.check({ x: this.flight.x, y: this.flight.y, ...BIRD_BOX });
       this.drawHazards();
       if (result.hit) { this.finishRun(result.hit.kind); return; }
@@ -240,6 +240,18 @@ export class GameScene extends Phaser.Scene {
     const g = this.hazardArt;
     g.clear();
     for (const h of this.hazards.items) {
+      if (!h.passed) {
+        const lane = ['left', 'centre', 'right'][FLIGHT.lanes.findIndex(x => x === h.x)];
+        this.hint.setText(`Obstacle ahead in the ${lane} lane`);
+      }
+      if (h.y + h.height / 2 < this.flight.cameraY) {
+        // At full climb speed, the screen alone is too short for a fair warning.
+        const y = this.flight.cameraY + 145;
+        g.fillStyle(0xffd46b, 0.4).fillRoundedRect(h.x - 80, y - 20, 160, 60, 12);
+        g.lineStyle(3, 0xb7782e).strokeRoundedRect(h.x - 80, y - 20, 160, 60, 12);
+        g.fillStyle(0xb7782e).fillTriangle(h.x - 15, y + 18, h.x + 15, y + 18, h.x, y - 5);
+        continue;
+      }
       if (this.level.id === 'dessert') {
         g.fillStyle(h.kind === 'pot' ? 0xe77b96 : h.kind === 'knife' ? 0x8c5c49 : 0xeab75c)
           .fillRoundedRect(h.x - h.width / 2, h.y - h.height / 2, h.width, h.height, 14);

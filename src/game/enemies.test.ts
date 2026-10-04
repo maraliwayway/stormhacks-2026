@@ -20,7 +20,7 @@ describe('cat ambush', () => {
       const camera = FLIGHT.startY - altitude * FLIGHT.pixelsPerMetre - 360;
       const currentBird = { ...bird, y: camera + 360 };
       enemies.tick(altitude, camera, 0.05, undefined, currentBird);
-      hazards.advance(camera, enemies.items.length ? currentBird.y : undefined);
+      hazards.advance(camera, enemies.items.length ? currentBird.y : undefined, currentBird.y);
       expect(enemies.items.length + hazards.items.length).toBeLessThanOrEqual(1);
       enemies.check({ ...currentBird, x: 340 });
     }
