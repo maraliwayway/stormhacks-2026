@@ -2,7 +2,7 @@ import { getDifficulty, getEncounterPacing } from './difficulty';
 import { FLIGHT } from './flight';
 import type { Box } from './hazards';
 
-export const WARNING_SECONDS = 1;
+export const WARNING_SECONDS = 2.5;
 export const STRIKE_SECONDS = 0.35;
 export const RETREAT_SECONDS = 0.3;
 export const FIRST_CAT_GRACE_SECONDS = 5;

@@ -170,7 +170,7 @@ export class GameScene extends Phaser.Scene {
     } else if (input.tracking && input.calibrated) {
       const birdBox = { x: this.flight.x, y: this.flight.y, ...BIRD_BOX };
       this.enemies.tick(this.flight.altitude, this.flight.cameraY, Math.min(delta, 50) / 1000, undefined, birdBox);
-      // A cat beat reserves a clear flight corridor in all three lanes.
+      // A cat beat clears all map obstacles so only one threat is active.
       this.hazards.advance(this.flight.cameraY, this.enemies.items.length ? this.flight.y : undefined);
       const result = this.hazards.check({ x: this.flight.x, y: this.flight.y, ...BIRD_BOX });
       this.drawHazards();
@@ -299,7 +299,7 @@ export class GameScene extends Phaser.Scene {
           g.lineBetween(x + side * 35, y + 18, x + side * 85, y + 8);
           g.lineBetween(x + side * 35, y + 29, x + side * 85, y + 35);
         }
-        // The ring fills during the one second warning.
+        // The ring fills during the full warning period.
         g.lineStyle(6, 0xb7782e).beginPath().arc(x, y, 90, -Math.PI / 2,
           -Math.PI / 2 + Math.PI * 2 * Math.min(1, e.age / WARNING_SECONDS), false).strokePath();
       } else {

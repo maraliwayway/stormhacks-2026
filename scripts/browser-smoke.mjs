@@ -213,7 +213,7 @@ try {
   await page.evaluate(async () => {
     const { FLIGHT } = await import('/src/game/flight.ts');
     const { HazardField } = await import('/src/game/hazards.ts');
-    const { EnemyField } = await import('/src/game/enemies.ts');
+    const { EnemyField, WARNING_SECONDS } = await import('/src/game/enemies.ts');
     window.levelEvents = [];
     const { gameEvents } = await import('/src/game/events.ts');
     gameEvents.on('level_start', event => window.levelEvents.push(event.level));
@@ -237,7 +237,7 @@ try {
     scene.hazards.items = [{ id: 100, x: 640, y: FLIGHT.startY - 120 * FLIGHT.pixelsPerMetre,
       width: 96, height: 62, kind: 'pot', passed: false }];
     scene.enemies.items = [{ kind: 'cat-paw', lane: 1, x: 640, y: 0, width: 220, height: 720,
-      age: 1.1, faceOffset: 200, strikeChecked: false, crossedStrike: true }];
+      age: WARNING_SECONDS + 0.1, faceOffset: 200, strikeChecked: false, crossedStrike: true }];
     scene.worms.items = [{ id: 100, x: 640, y: 0, width: 42, height: 30 }];
   });
   const visit = altitude => page.evaluate(altitude => window.visitAltitude(altitude), altitude);
@@ -257,7 +257,7 @@ try {
   assert.equal(kitchenAgain.level, 'kitchen');
   assert.equal(kitchenAgain.phase, 'playing');
   assert.equal(kitchenAgain.score, '150 m');
-  assert.ok(kitchenAgain.hazards > 0, 'obstacles resume after Heaven');
+  assert.equal(kitchenAgain.hazards, 1, 'one obstacle resumes after Heaven');
   await page.screenshot({ path: 'test-results/kitchen-loop.png' });
   assert.equal((await visit(210)).level, 'dessert');
   assert.equal((await visit(270)).level, 'heaven');
@@ -265,7 +265,8 @@ try {
   const thirdKitchen = await visit(300);
   assert.equal(thirdKitchen.level, 'kitchen');
   assert.equal(thirdKitchen.phase, 'playing');
-  assert.ok(thirdKitchen.enemies > 0, 'cats resume after Heaven');
+  assert.equal(thirdKitchen.enemies, 1, 'one cat resumes after Heaven');
+  assert.equal(thirdKitchen.hazards, 0, 'no map obstacles during a cat encounter');
   assert.deepEqual(await page.evaluate(() => window.levelEvents), ['heaven', 'kitchen', 'dessert', 'heaven', 'kitchen']);
   assert.deepEqual(await page.evaluate(() => [window.winEvents, window.endEvents]), [0, 0]);
   await page.evaluate(() => window.testGame.scene.getScene('Game').finishRun('test'));
@@ -313,7 +314,7 @@ try {
     window.testInput.tracking = true;
     window.testGame.scene.getScene('Game').flight.x = 340;
   });
-  const dodged = await catStep(21);
+  const dodged = await catStep(81);
   assert.equal(dodged.phase, 'playing');
   assert.equal(dodged.x, 640);
   await page.screenshot({ path: 'test-results/cat-paw.png' });

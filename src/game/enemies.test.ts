@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EnemyField, WARNING_SECONDS, STRIKE_SECONDS, FIRST_CAT_GRACE_SECONDS } from './enemies';
-import { BIRD_BOX } from './hazards';
+import { BIRD_BOX, HazardField } from './hazards';
+import { FLIGHT } from './flight';
 import { getDifficulty, setDifficulty } from './difficulty';
 
 const bird = { x: 640, y: 360, ...BIRD_BOX };
@@ -11,6 +12,19 @@ const readyField = () => {
 };
 
 describe('cat ambush', () => {
+  it('keeps cats and map obstacles mutually exclusive throughout a long climb', () => {
+    const enemies = readyField();
+    const hazards = new HazardField();
+    for (let frame = 0; frame < 600; frame++) {
+      const altitude = frame * 0.05 * 25;
+      const camera = FLIGHT.startY - altitude * FLIGHT.pixelsPerMetre - 360;
+      const currentBird = { ...bird, y: camera + 360 };
+      enemies.tick(altitude, camera, 0.05, undefined, currentBird);
+      hazards.advance(camera, enemies.items.length ? currentBird.y : undefined);
+      expect(enemies.items.length + hazards.items.length).toBeLessThanOrEqual(1);
+      enemies.check({ ...currentBird, x: 340 });
+    }
+  });
   it('waits five active seconds after the first flap, even at high altitude, and resets on retry', () => {
     for (let run = 0; run < 2; run++) {
       const field = new EnemyField();
@@ -31,7 +45,7 @@ describe('cat ambush', () => {
     const countEncounters = (startAltitude: number) => {
       const field = readyField();
       let encounters = 0;
-      for (let frame = 0; frame <= 240; frame++) {
+      for (let frame = 0; frame <= 480; frame++) {
         const altitude = startAltitude + frame * 0.05 * 25;
         field.tick(altitude, 0, frame === 0 ? 0 : 0.05, undefined, bird);
         expect(field.items.length).toBeLessThanOrEqual(1);
@@ -45,7 +59,7 @@ describe('cat ambush', () => {
     expect(countEncounters(1000)).toBeGreaterThan(countEncounters(20));
   });
 
-  it('warns for a full second, then strikes the same lane even if the bird climbs', () => {
+  it('gives 2.5 seconds to dodge, then strikes the same lane even if the bird climbs', () => {
     const field = readyField();
     field.tick(20, 0, 0, undefined, bird);
     const cat = field.items[0];
@@ -75,7 +89,7 @@ describe('cat ambush', () => {
   it('does not skip a strike on a delayed frame', () => {
     const field = readyField();
     field.tick(20, 0, 0, undefined, bird);
-    field.tick(20, 0, 2);
+    field.tick(20, 0, WARNING_SECONDS + STRIKE_SECONDS + 1);
     expect(field.check(bird).hit?.kind).toBe('cat-paw');
   });
 

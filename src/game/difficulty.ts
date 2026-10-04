@@ -31,7 +31,7 @@ export function getEncounterPacing(altitude: number, difficulty = getDifficulty(
   const progress = Math.max(0, Math.min(1, altitude / ALTITUDE_RAMP_METRES));
   return {
     everyMetres: Math.max(12, Math.max(24, difficulty.enemyEveryMetres) * (1 - progress * 0.5)),
-    // Never overlap cats or reduce their one-second warning to increase difficulty.
-    cooldownSeconds: ENCOUNTER_COOLDOWN_SECONDS - progress * 3,
+    // Frequency increases while preserving the full warning and a breather between cats.
+    cooldownSeconds: ENCOUNTER_COOLDOWN_SECONDS - progress * 2,
   };
 }
