@@ -159,11 +159,3 @@
     padding: 0 10px;
   }
 }
-
-/* The caption and rank replace the decorative pigeon on shorter screens so the card still fits. */
-@media (max-height: 860px) {
-  .result-dialog:has(.dev3-quote:not([hidden]), .dev3-board:not([hidden]))
-    .result-bird {
-    display: none;
-  }
-}

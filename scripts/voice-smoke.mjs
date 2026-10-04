@@ -107,11 +107,9 @@ try {
       return start.apply(this, args);
     };
   });
-  await page.goto(`${url}/?kb`);
-  await page.getByRole("button", { name: "Take flight" }).waitFor();
-  await page.waitForFunction(
-    () => !document.querySelector("[data-action=advance]").disabled,
-  );
+  // The camera is the only controller, so tests inject a scripted input source (as the team's smoke tests do).
+  await page.goto(`${url}/?nocamera`);
+  await page.waitForSelector("[data-action=advance]");
   await page.evaluate(async () => {
     const [{ game }, { voiceDirector }, { audioEngine }, { backendLink }] =
       await Promise.all([
@@ -121,6 +119,19 @@ try {
         import("/src/net/backendLink.ts"),
       ]);
     window.testGame = game;
+    const { inputManager } = await import("/src/input/inputManager.ts");
+    const { EMPTY_INPUT } = await import("/src/input/types.ts");
+    const { gameUi } = await import("/src/ui/gameUi.ts");
+    window.pose = {
+      ...EMPTY_INPUT,
+      tracking: true,
+      calibrated: true,
+      menuConfirmMode: "clap",
+      selectCount: 0,
+      flapCount: 0,
+    };
+    inputManager.setSource({ getState: () => window.pose });
+    gameUi.setCameraStatus("ready");
     window.voiceLog = [];
     const say = voiceDirector.say.bind(voiceDirector);
     voiceDirector.say = (event, context) => {
@@ -142,9 +153,10 @@ try {
   await page.getByRole("button", { name: "Top flyers" }).waitFor();
 
   // Starting a run tells the first story beat with the Narrator.
-  await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Let’s fly" }).waitFor();
-  await page.keyboard.press("Enter");
+  await page.waitForFunction(
+    () => !document.querySelector("[data-action=advance]").disabled,
+  );
+  await page.evaluate(() => window.pose.selectCount++);
   await waitForPlaying(page);
   await page.waitForFunction(() => window.dev3.audioEngine.ready);
   await page.waitForFunction(() =>
@@ -153,7 +165,7 @@ try {
   const opening = await page.evaluate(() => window.voiceLog[0].id);
   assert.match(opening, /^narrator_start_/, "a run opens with the Narrator");
   for (let i = 0; i < 4; i++) {
-    await page.keyboard.press("Space");
+    await page.evaluate(() => window.pose.flapCount++);
     await page.waitForTimeout(120);
   }
   await page.waitForFunction(() => window.clipsStarted >= 3);
@@ -164,7 +176,7 @@ try {
     scene.flight.altitude = 23;
     scene.finishRun("pot");
   });
-  await page.getByRole("button", { name: "Fly again" }).waitFor();
+  await page.getByRole("button", { name: "Play again" }).waitFor();
   await page
     .locator(".dev3-panel [data-dev3-speaker]")
     .filter({ hasText: "Chef Gustavo" })
@@ -191,7 +203,7 @@ try {
   await page.screenshot({ path: "test-results/voice-results.png" });
 
   // Death 2: the backend writes a live roast; the cached line must not also play.
-  await page.getByRole("button", { name: "Fly again" }).click();
+  await page.getByRole("button", { name: "Play again" }).click();
   await waitForPlaying(page);
   const diedAt = await page.evaluate(() => {
     const scene = window.testGame.scene.getScene("Game");
@@ -217,7 +229,7 @@ try {
       ).length,
     };
   }, diedAt);
-  await page.getByRole("button", { name: "Fly again" }).waitFor();
+  await page.getByRole("button", { name: "Play again" }).waitFor();
   if (liveRoast) {
     assert.equal(
       second.line.live,
@@ -237,7 +249,7 @@ ${backendLog.join("")}`,
   await page.screenshot({ path: "test-results/voice-roast.png" });
 
   // Menu board lists the renamed run.
-  await page.getByRole("button", { name: "Back to the nest" }).click();
+  await page.getByRole("button", { name: "Menu" }).click();
   await page.getByRole("button", { name: "Top flyers" }).click();
   // Both runs after the rename are saved under the new call sign.
   await page
@@ -253,8 +265,10 @@ ${backendLog.join("")}`,
   await page.waitForFunction(() => !window.dev3.backendLink.online, null, {
     timeout: 10_000,
   });
-  await page.getByRole("button", { name: "Take flight" }).click();
-  await page.getByRole("button", { name: "Let’s fly" }).click();
+  await page.waitForFunction(
+    () => !document.querySelector("[data-action=advance]")?.disabled,
+  );
+  await page.evaluate(() => window.pose.selectCount++);
   await waitForPlaying(page);
   const offlineAt = await page.evaluate(() => {
     const scene = window.testGame.scene.getScene("Game");
@@ -263,7 +277,7 @@ ${backendLog.join("")}`,
     scene.finishRun("fall");
     return at;
   });
-  await page.getByRole("button", { name: "Fly again" }).waitFor();
+  await page.getByRole("button", { name: "Play again" }).waitFor();
   const offline = await page.evaluate(
     (since) => ({
       line: window.dev3.voiceDirector.lastDeathLine,

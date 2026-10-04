@@ -79,8 +79,11 @@ function attachPanel(dialog: HTMLElement): void {
   const holder = document.createElement("div");
   holder.innerHTML = PANEL_HTML;
   const panel = holder.firstElementChild as HTMLElement;
-  const anchor = dialog.querySelector(".result-bird");
-  dialog.insertBefore(panel, anchor ?? dialog.querySelector(".primary-button"));
+  const anchor = dialog.querySelector(".final-score");
+  dialog.insertBefore(
+    panel,
+    anchor?.nextSibling ?? dialog.querySelector(".dialog-actions"),
+  );
   renderQuote(panel, voiceDirector.lastDeathLine);
   renderPlacement(panel, leaderboard.latest);
   const form = panel.querySelector<HTMLFormElement>("[data-dev3-sign]")!;
@@ -164,11 +167,11 @@ function closeTopFlyersOutside(event: PointerEvent): void {
 }
 
 function scan(root: HTMLElement): void {
-  const dialog = root.querySelector<HTMLElement>(".result-dialog");
+  const dialog = root.querySelector<HTMLElement>(".results");
   if (dialog && !dialog.querySelector(".dev3-panel")) {
     attachPanel(dialog);
   }
-  const tools = root.querySelector<HTMLElement>(".menu-screen .header-tools");
+  const tools = root.querySelector<HTMLElement>(".title-screen .corner-buttons");
   if (tools && backendLink.configured && !tools.querySelector(".dev3-top")) {
     attachTopFlyers(tools);
   }
