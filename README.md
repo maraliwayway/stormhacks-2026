@@ -1,6 +1,6 @@
 # Flap or Flop
 
-Dodge obstacles and stay out of cat lanes. Flap your arms in front of your webcam to fly a pigeon through a kitchen, a desert and bird heaven. Built for StormHacks 2026.
+Be a flapper, not a flop. Flap your arms in front of your webcam to fly a pigeon through a kitchen, a desert and bird heaven. Built for StormHacks 2026.
 
 ## Run locally
 

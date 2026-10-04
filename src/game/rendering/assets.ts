@@ -9,6 +9,8 @@ export function loadGameArt(scene: Phaser.Scene): void {
   const keys = new Set([
     "map-kitchen",
     "map-dessert",
+    "pigeon-hero",
+    "pigeon-rest",
     ...[1, 2, 3, 4, 5].map((frame) => `pigeon-flight-${frame}`),
     ...Object.entries(HAZARD_ART)
       .filter(([level]) => !GENERATED_HAZARD_LEVELS.has(level))

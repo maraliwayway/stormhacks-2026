@@ -1,6 +1,6 @@
 # UI and artwork
 
-Flap or Flop keeps to a few flat colours, thick ink outlines, and handwritten type. The layout follows simple arcade games such as Doodle Jump and Temple Run: one title screen, a score in the corner, a pause button, and nothing else on screen during play. The tagline is "Dodge obstacles and stay out of cat lanes."
+Flap or Flop keeps to a few flat colours, thick ink outlines, and handwritten type. The layout follows simple arcade games such as Doodle Jump and Temple Run: one title screen, a score in the corner, a pause button, and nothing else on screen during play. The tagline is "Be a flapper, not a flop."
 
 We avoid the usual signs of generated UI: no gradients, glass, grain, or blur; no emoji, stars, badges, or icon-card rows; no stock icon set (the few icons are drawn for this game in `src/ui/icons.ts`); no fade-on-hover or fade-in effects (buttons press down; the world banner slides); and no em dashes in the copy.
 
@@ -14,7 +14,7 @@ The UI layer has the same 16:9 box as the Phaser canvas and is sized in containe
 
 | Screen | Contents |
 | --- | --- |
-| Title | Logo and tagline on a flat sky with drifting clouds, the camera "mirror" in the centre, three doodled tips, best score, sound and fullscreen buttons |
+| Title | Logo and tagline centred above the mirror on a flat sky with drifting clouds and two faint pigeons, the camera "mirror" in the centre, four doodled rules (left) and the best score (right), both level with the middle of the mirror, sound and fullscreen buttons |
 | Flight | Score and best (top left), sound and pause (top right), the player's bird (bottom right), world banner on each map change, a red pill only while a cat threatens |
 | Lost tracking | A card with the camera mirror and a Recalibrate button |
 | Pause | "paused", palms-together hint, Resume, Quit |
