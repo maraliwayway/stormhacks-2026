@@ -1,12 +1,14 @@
 {
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "test:gestures": "tsc src/input/cv/gestureDetector.test.ts --outDir .test-out --module commonjs --target es2022 --skipLibCheck --types node && node .test-out/gestureDetector.test.js"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1"
   },
   "devDependencies": {
+    "@types/node": "^26.6.4",
     "typescript": "^7.0.2",
     "vite": "^8.3.2"
   }

@@ -1,10 +1,17 @@
-import { startTracker, getLatest } from './poseTracker';
+import { startTracker, getLatest, onFrame } from './poseTracker';
+import { createGestureDetector, type GestureState } from './gestureDetector';
 import { L } from './landmarks';
 import { createDebugOverlay } from './debugOverlay';
 
 const btn = document.getElementById('start') as HTMLButtonElement;
 const video = document.getElementById('video') as HTMLVideoElement;
 const out = document.getElementById('out') as HTMLPreElement;
+
+const detector = createGestureDetector();
+let gestures: GestureState | null = null;
+onFrame((snap) => {
+  gestures = detector.update(snap.landmarks, snap.frameTs);
+});
 
 btn.onclick = async () => {
   btn.disabled = true;
@@ -35,6 +42,9 @@ btn.onclick = async () => {
       `shoulder width: ${shoulderW.toFixed(3)}`,
       `L wrist y - shoulder y: ${(lm[L.WRIST_L].y - shoulderY).toFixed(3)}`,
       `R wrist y - shoulder y: ${(lm[L.WRIST_R].y - shoulderY).toFixed(3)}`,
+      '',
+      gestures ? `flapCount ${gestures.flapCount} | flapRate ${gestures.flapRate.toFixed(2)}/s | flapping ${gestures.flapping}` : '',
+      gestures ? `strafe ${gestures.strafe.toFixed(2)} | strafeL ${gestures.strafeLeft} | strafeR ${gestures.strafeRight} | jump ${gestures.jump} | squat ${gestures.squat}` : '',
     ].join('\n');
   }, 200);
 };

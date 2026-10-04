@@ -16,6 +16,14 @@ let frameCount = 0;
 let fpsLogTick = 0;
 let fpsWindowStart = performance.now();
 
+type FrameListener = (snap: TrackerSnapshot) => void;
+const listeners: FrameListener[] = [];
+
+/** Called once per processed camera frame (not per render frame). Keep listeners cheap. */
+export function onFrame(cb: FrameListener) {
+  listeners.push(cb);
+}
+
 export function getLatest(): TrackerSnapshot {
   return latest;
 }
@@ -45,6 +53,7 @@ export async function startTracker(videoEl: HTMLVideoElement): Promise<void> {
       latest.inferenceMs = performance.now() - t0;
       latest.landmarks = result.landmarks[0] ?? null;
       latest.frameTs = ts;
+      for (const cb of listeners) cb(latest);
 
       frameCount++;
       const elapsed = performance.now() - fpsWindowStart;
