@@ -1,0 +1,30 @@
+# Dev 3: Render Blueprint for the FastAPI backend (leaderboard + live roast). See docs/dev3-deploy.md.
+services:
+  - type: web
+    name: flappy-arms-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: VOICE_ID_NARRATOR
+        value: JBFqnCBsd6RMkjVDRZzb
+      - key: VOICE_ID_CHEF
+        value: N2lVS1w4EtoT3dr4eOWO
+      - key: VOICE_ID_ANNOUNCER
+        sync: false
+      - key: ELEVENLABS_FLASH_MODEL
+        value: eleven_flash_v2_5
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      # Comma-separated list: the .tech domain and the Cloudflare workers.dev URL.
+      - key: FRONTEND_ORIGIN
+        sync: false

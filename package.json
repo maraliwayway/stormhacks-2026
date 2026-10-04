@@ -12,6 +12,7 @@
     "test:browser": "node scripts/browser-smoke.mjs",
     "test:camera": "node scripts/camera-smoke.mjs",
     "test:ui": "node scripts/ui-smoke.mjs",
+    "test:voice": "node scripts/voice-smoke.mjs",
     "lint": "biome check .",
     "lint:ci": "biome ci .",
     "lint:fix": "biome check --write ."
