@@ -45,6 +45,15 @@ export class KeyboardInput implements InputSource {
   }
 
   private onDown = (event: KeyboardEvent): void => {
+    const element = event.target as HTMLElement | null;
+    // Native controls own their activation keys; gameplay never consumes a focused button.
+    if (
+      element?.closest?.(
+        "button, a, input, select, textarea, [contenteditable=true]",
+      )
+    ) {
+      return;
+    }
     if (!CONTROL_KEYS.has(event.code)) {
       return;
     }

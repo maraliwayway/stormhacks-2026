@@ -4,8 +4,8 @@ import { gameEvents } from "./events";
 /** Listeners live only as long as the scene. All particles have bounded lifetimes. */
 export function installVfx(
   scene: Phaser.Scene,
-  bird: Phaser.GameObjects.Image,
-  score: Phaser.GameObjects.Text,
+  bird: Phaser.GameObjects.Sprite,
+  pulseScore: () => void,
   slowMotion: () => void,
 ): void {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -55,14 +55,7 @@ export function installVfx(
       if (reduced) {
         return;
       }
-      scene.tweens.killTweensOf(score);
-      score.setScale(1.2);
-      scene.tweens.add({
-        targets: score,
-        scale: 1,
-        duration: 280,
-        ease: "Back.Out",
-      });
+      pulseScore();
     }),
   ];
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>

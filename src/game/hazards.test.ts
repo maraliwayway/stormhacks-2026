@@ -74,29 +74,32 @@ describe("hazards", () => {
     ).toBeGreaterThanOrEqual(HAZARD_MIN_LEAD);
   });
 
-  it("gives every new obstacle at least 2.5 seconds of lead at maximum climb speed", () => {
-    const field = new HazardField();
-    let previousId = -1;
-    let spawned = 0;
-    for (let frame = 0; frame < 1800; frame++) {
-      const birdY = FLIGHT.startY - (frame * FLIGHT.maxRise) / 60;
-      const camera = Math.min(0, birdY - 360);
-      field.advance(camera, { birdY });
-      const h = field.items[0];
-      if (h && h.id !== previousId) {
-        const gap = birdY - BIRD_BOX.height / 2 - (h.y + h.height / 2);
-        expect(gap / FLIGHT.maxRise).toBeGreaterThanOrEqual(
-          HAZARD_REACTION_SECONDS,
-        );
-        expect(
-          field.check({ x: h.x, y: birdY, ...BIRD_BOX }).hit,
-        ).toBeUndefined();
-        previousId = h.id;
-        spawned++;
+  it.each(["kitchen", "dessert"] as const)(
+    "gives every new %s obstacle at least 2.5 seconds of lead at maximum climb speed",
+    (levelId) => {
+      const field = new HazardField();
+      let previousId = -1;
+      let spawned = 0;
+      for (let frame = 0; frame < 1800; frame++) {
+        const birdY = FLIGHT.startY - (frame * FLIGHT.maxRise) / 60;
+        const camera = Math.min(0, birdY - 360);
+        field.advance(camera, { birdY, levelId });
+        const h = field.items[0];
+        if (h && h.id !== previousId) {
+          const gap = birdY - BIRD_BOX.height / 2 - (h.y + h.height / 2);
+          expect(gap / FLIGHT.maxRise).toBeGreaterThanOrEqual(
+            HAZARD_REACTION_SECONDS,
+          );
+          expect(
+            field.check({ x: h.x, y: birdY, ...BIRD_BOX }).hit,
+          ).toBeUndefined();
+          previousId = h.id;
+          spawned++;
+        }
       }
-    }
-    expect(spawned).toBeGreaterThan(5);
-  });
+      expect(spawned).toBeGreaterThan(5);
+    },
+  );
 
   it("forgives sprite edges and emits a near miss only once per hazard", () => {
     const a = { x: 0, y: 0, width: 100, height: 100 };
