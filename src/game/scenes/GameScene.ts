@@ -5,6 +5,7 @@ import { Flight, FLIGHT } from '../flight';
 import { gameEvents } from '../events';
 import { BIRD_BOX, HazardField } from '../hazards';
 import { bestScore } from '../storage';
+import { EnemyField, WARNING_SECONDS } from '../enemies';
 
 export class GameScene extends Phaser.Scene {
   protected flight!: Flight;
@@ -18,6 +19,8 @@ export class GameScene extends Phaser.Scene {
   private lastMilestone = 0;
   protected hazards!: HazardField;
   protected hazardArt!: Phaser.GameObjects.Graphics;
+  protected enemies!: EnemyField;
+  private enemyArt!: Phaser.GameObjects.Graphics;
   private runFlaps = 0;
   private overBaseline = 0;
   private overSelectCount = 0;
@@ -38,6 +41,8 @@ export class GameScene extends Phaser.Scene {
     this.selectHeld = Boolean(inputManager.getState().select);
     this.hazards = new HazardField();
     this.hazardArt = this.add.graphics().setDepth(5);
+    this.enemies = new EnemyField();
+    this.enemyArt = this.add.graphics().setDepth(6);
     const input = inputManager.getState();
     this.flight = new Flight(input.flapCount);
     this.flight.velocity = -200;
@@ -121,6 +126,13 @@ export class GameScene extends Phaser.Scene {
       for (const _miss of result.misses) {
         gameEvents.emit('near_miss', { altitude: this.flight.altitude, x: this.flight.x, y: this.flight.y });
       }
+      this.enemies.tick(this.flight.altitude, this.flight.cameraY, dt);
+      const enemyResult = this.enemies.check({ x: this.flight.x, y: this.flight.y, ...BIRD_BOX });
+      this.drawEnemies();
+      if (enemyResult.hit) { this.finishRun(enemyResult.hit.kind); return; }
+      for (const _miss of enemyResult.misses) {
+        gameEvents.emit('near_miss', { altitude: this.flight.altitude, x: this.flight.x, y: this.flight.y });
+      }
     }
     if (this.flight.offscreen) this.finishRun('fall');
   }
@@ -179,6 +191,23 @@ export class GameScene extends Phaser.Scene {
       } else {
         g.fillStyle(0x825738).fillRect(left - 18, h.y - 8, 18, 16);
         g.fillRect(left + h.width, h.y - 8, 18, 16);
+      }
+    }
+  }
+
+  private drawEnemies(): void {
+    const g = this.enemyArt;
+    g.clear();
+    for (const e of this.enemies.items) {
+      const warning = e.age < WARNING_SECONDS;
+      g.fillStyle(warning ? 0xffd46b : e.kind === 'diver' ? 0xba5a55 : 0x965477, warning ? 0.65 : 1);
+      g.fillEllipse(e.x, e.y, e.width, e.height);
+      g.fillStyle(0xfff3db).fillCircle(e.x - 14, e.y - 6, 10).fillCircle(e.x + 14, e.y - 6, 10);
+      g.fillStyle(0x193c45).fillCircle(e.x - 14, e.y - 4, 4).fillCircle(e.x + 14, e.y - 4, 4);
+      if (warning) {
+        g.lineStyle(3, 0xb7782e, 0.7).strokeCircle(e.x, e.y, 58);
+        g.lineBetween(e.x, e.y - 94, e.x, e.y - 76);
+        g.fillStyle(0xb7782e).fillCircle(e.x, e.y - 68, 3);
       }
     }
   }

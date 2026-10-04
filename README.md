@@ -30,6 +30,8 @@ Keyboard fallback starts by default. Space records one flap per press, arrows pr
 
 Dev 3 can register `setScoreSink` from `src/net/scoreSync.ts` to send finished runs to the leaderboard. No backend endpoint is configured yet. Best altitude stays available locally when the backend or browser storage is unavailable.
 
+Dev 1 can call `setDifficulty` in `src/game/difficulty.ts` with `enemyEveryMetres`, `enemySpeed`, and weights for `static`, `sweeper`, and `diver`. The default mix runs locally until adaptive tuning lands. Enemies warn for 650 ms before moving or becoming collidable.
+
 | Folder | Owner / purpose |
 | --- | --- |
 | `src/input` | Shared contract and input sources |
