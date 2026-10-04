@@ -26,8 +26,8 @@ export interface InputState {
   
     /**
      * Analog strafe, -1 (fully left) .. 0 (centre) .. +1 (fully right).
-     * Proportional to how far the hip midpoint is from calibrated centre, with a small
-     * deadzone. Use this for movement: velocityX = strafe * maxSpeed.
+     * Proportional to torso tilt or hip displacement from calibrated centre, with a small
+     * deadzone. Gameplay uses a fresh tilt to select one adjacent lane.
      * Keyboard: -1 / 0 / +1.
      */
     strafe: number;

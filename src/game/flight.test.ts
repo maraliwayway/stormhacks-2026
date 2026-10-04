@@ -5,15 +5,23 @@ import { Flight, FLIGHT } from './flight';
 const active = () => ({ ...EMPTY_INPUT, tracking: true, calibrated: true });
 
 describe('flight physics', () => {
-  it('steers within 100 ms and reverses without a long sideways drift', () => {
+  it('a small tilt moves exactly one lane, settles quickly, and does not repeat while held', () => {
     const flight = new Flight();
-    const input = { ...active(), strafe: 1 };
-    for (let i = 0; i < 6; i++) flight.update(input, 1 / 60);
-    expect(flight.x - 640).toBeGreaterThan(30);
-    const beforeReverse = flight.x;
-    input.strafe = -1;
-    for (let i = 0; i < 6; i++) flight.update(input, 1 / 60);
-    expect(flight.x).toBeLessThan(beforeReverse);
+    const input = { ...active(), strafe: -0.25 };
+    for (let i = 0; i < 12; i++) flight.update(input, 1 / 60);
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+    for (let i = 0; i < 120; i++) flight.update(input, 1 / 60);
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+    input.strafe = 0.25;
+    for (let i = 0; i < 12; i++) flight.update(input, 1 / 60);
+    expect(flight.x).toBe(FLIGHT.lanes[1]);
+    for (let i = 0; i < 120; i++) flight.update(input, 1 / 60);
+    expect(flight.x).toBe(FLIGHT.lanes[1]);
+    input.strafe = 0;
+    flight.update(input, 1 / 60);
+    input.strafe = 0.25;
+    for (let i = 0; i < 12; i++) flight.update(input, 1 / 60);
+    expect(flight.x).toBe(FLIGHT.lanes[2]);
   });
 
   it('gives one flap over seven metres of lift from rest and caps repeated impulses', () => {
@@ -64,23 +72,30 @@ describe('flight physics', () => {
     expect(flight.offscreen).toBe(true);
   });
 
-  it('glides in proportion to the analog strafe, stops at the edges, and returns', () => {
-    const run = (strafe: number, frames = 60) => {
-      const flight = new Flight();
-      const input = { ...active(), strafe };
-      for (let i = 0; i < frames; i++) flight.update(input, 1 / 60);
-      return flight.x;
-    };
-    const centre = new Flight().x;
-    expect(run(0)).toBe(centre);
-    const slight = run(0.3) - centre;
-    const full = run(1) - centre;
-    expect(slight).toBeGreaterThan(0);
-    expect(full).toBeGreaterThan(slight * 2);
-    expect(run(-1)).toBeLessThan(centre);
-    expect(run(1, 600)).toBe(FLIGHT.maxX);
-    expect(run(-1, 600)).toBe(FLIGHT.minX);
-    expect(run(5)).toBe(run(1));
+  it('ignores jitter, finishes a short key press, and clamps moves at the outer lanes', () => {
+    const flight = new Flight();
+    const input = { ...active(), strafe: 0.15 };
+    for (let i = 0; i < 60; i++) flight.update(input, 1 / 60);
+    expect(flight.x).toBe(FLIGHT.lanes[1]);
+    input.strafe = 1;
+    flight.update(input, 1 / 60);
+    input.strafe = 0;
+    for (let i = 0; i < 12; i++) flight.update(input, 1 / 60);
+    expect(flight.x).toBe(FLIGHT.lanes[2]);
+    for (let i = 0; i < 5; i++) {
+      input.strafe = 1;
+      flight.update(input, 0.2);
+      input.strafe = 0;
+      flight.update(input, 0.2);
+      expect(flight.x).toBe(FLIGHT.lanes[2]);
+    }
+    for (let i = 0; i < 5; i++) {
+      input.strafe = -1;
+      flight.update(input, 0.2);
+      input.strafe = 0;
+      flight.update(input, 0.2);
+    }
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
   });
 
   it('pauses without tracking and rebases a reset input counter', () => {

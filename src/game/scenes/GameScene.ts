@@ -107,7 +107,7 @@ export class GameScene extends Phaser.Scene {
     this.wormHud = this.add.text(30, 60, `WORMS ${wormBalance.get()}`, {
       fontSize: '20px', color: '#173e47',
     }).setScrollFactor(0).setDepth(30).setVisible(WORMS_ENABLED);
-    this.hint = this.add.text(640, 680, 'Tap Space to flap   •   Left / right to glide', {
+    this.hint = this.add.text(640, 680, 'Tap Space to flap   •   Tap left / right to change lane', {
       fontSize: '20px', color: '#173e47', backgroundColor: '#fff1d5', padding: { x: 16, y: 8 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(30);
     installVfx(this, this.bird, this.score, () => { this.slowUntil = this.time.now + 200; });
@@ -147,8 +147,8 @@ export class GameScene extends Phaser.Scene {
     this.hint.setText(!input.tracking || !input.calibrated
       ? 'Tracking paused. Return to the camera or use keyboard mode.'
       : input === keyboard.getState()
-        ? 'Tap Space to flap   •   Left / right to glide'
-        : 'Flap both arms to rise   •   Lean left / right to glide');
+        ? 'Tap Space to flap   •   Tap left / right to change lane'
+        : 'Flap both arms to rise   •   Tilt to change lane, then return upright');
     const nextLevel = levelAt(this.flight.altitude);
     if (nextLevel.start !== this.level.start) {
       this.level = nextLevel;

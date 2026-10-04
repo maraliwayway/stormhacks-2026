@@ -39,7 +39,7 @@ export interface CalibrationStatus {
   calibration: Calibration | null;
 }
 
-interface Sample { sw: number; hipX: number; hipY: number; shoulderY: number }
+interface Sample { sw: number; hipX: number; hipY: number; shoulderY: number; shoulderX: number }
 
 const median = (a: number[]) => {
   const s = [...a].sort((x, y) => x - y);
@@ -91,6 +91,7 @@ export function createCalibrator() {
       hipX: (lm[L.HIP_L].x + lm[L.HIP_R].x) / 2,
       hipY: (lm[L.HIP_L].y + lm[L.HIP_R].y) / 2,
       shoulderY: (lm[L.SHOULDER_L].y + lm[L.SHOULDER_R].y) / 2,
+      shoulderX: (lm[L.SHOULDER_L].x + lm[L.SHOULDER_R].x) / 2,
     });
 
     if (ts - startTs >= CAL.captureMs) {
@@ -107,6 +108,7 @@ export function createCalibrator() {
           hipX: median(samples.map((s) => s.hipX)),
           hipY: median(samples.map((s) => s.hipY)),
           shoulderY: median(samples.map((s) => s.shoulderY)),
+          shoulderX: median(samples.map((s) => s.shoulderX)),
         };
         phase = 'done';
         samples = [];

@@ -45,6 +45,7 @@ const tests: Record<string, () => void> = {
     assert.ok(Math.abs(cal.shoulderWidth - 0.2) < 1e-9);
     assert.ok(Math.abs(cal.hipX - 0.5) < 1e-9 && Math.abs(cal.hipY - 0.55) < 1e-9);
     assert.ok(Math.abs(cal.shoulderY - 0.3) < 1e-9);
+    assert.ok(Math.abs(cal.shoulderX! - 0.5) < 1e-9);
   },
   'waits (no capture) while body not in frame; losing it mid-capture restarts'() {
     const c = createCalibrator();

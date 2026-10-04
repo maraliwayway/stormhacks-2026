@@ -13,6 +13,8 @@ export interface Calibration {
   hipX: number;
   hipY: number;
   shoulderY: number;
+  /** Optional for compatibility with existing calibration producers. */
+  shoulderX?: number;
 }
 
 export const DEFAULT_CALIBRATION: Calibration = {
@@ -193,12 +195,16 @@ export function createGestureDetector() {
 
     // ---- body position gestures (relative to calibrated baseline) ----
     // Image x is not mirrored: stepping to your own LEFT moves you to larger x.
-    const dx = (hipX - calib.hipX) / sw;
+    const hipDx = (hipX - calib.hipX) / sw;
+    // A torso tilt moves the shoulders while the hips can stay planted.
+    const neutralTilt = (calib.shoulderX ?? calib.hipX) - calib.hipX;
+    const tiltDx = (shoulderX - hipX - neutralTilt) / sw;
+    const dx = Math.abs(hipDx) >= Math.abs(tiltDx) ? hipDx : tiltDx;
     const rise = (calib.hipY - hipY) / sw; // positive = hips higher than baseline
     const upSpeed = prevHipY === null ? 0 : -(hipY - prevHipY) / dt / sw;
 
-    strafeLeft = hold('strafeLeft', strafeLeft, dx, THRESHOLDS.strafeEnter, THRESHOLDS.strafeExit, ts);
-    strafeRight = hold('strafeRight', strafeRight, -dx, THRESHOLDS.strafeEnter, THRESHOLDS.strafeExit, ts);
+    strafeLeft = hold('strafeLeft', strafeLeft, hipDx, THRESHOLDS.strafeEnter, THRESHOLDS.strafeExit, ts);
+    strafeRight = hold('strafeRight', strafeRight, -hipDx, THRESHOLDS.strafeEnter, THRESHOLDS.strafeExit, ts);
     jump = hold('jump', jump, rise, THRESHOLDS.jumpEnter, THRESHOLDS.jumpExit, ts, upSpeed >= THRESHOLDS.jumpMinUpSpeed);
     squat = hold('squat', squat, -rise, THRESHOLDS.squatEnter, THRESHOLDS.squatExit, ts);
     if (squat) jump = false;

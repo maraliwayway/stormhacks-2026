@@ -109,6 +109,18 @@ try {
     const game = window.testGame;
     return game.scene.getScene('Game').flight.lane === 0;
   });
+  await page.waitForFunction(() => window.testGame.scene.getScene('Game').flight.x === 340);
+  await page.evaluate(() => { window.testInput.strafe = 1; });
+  await page.waitForFunction(() => window.testGame.scene.getScene('Game').flight.x === 640);
+  await page.waitForTimeout(200);
+  assert.equal(await page.evaluate(() => window.testGame.scene.getScene('Game').flight.x), 640,
+    'holding a right tilt moves one lane and stays there');
+  await page.evaluate(() => { window.testInput.strafe = 0; });
+  await page.waitForTimeout(50);
+  await page.evaluate(() => { window.testInput.strafe = 0.25; });
+  await page.waitForFunction(() => window.testGame.scene.getScene('Game').flight.x === 940);
+  await page.evaluate(() => { window.testInput.strafe = -0.25; });
+  await page.waitForFunction(() => window.testGame.scene.getScene('Game').flight.x === 640);
   await mkdir('test-results', { recursive: true });
   await page.screenshot({ path: 'test-results/gameplay.png' });
   const paused = await page.evaluate(async () => {

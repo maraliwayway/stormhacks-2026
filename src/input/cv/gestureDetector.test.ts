@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 import { createGestureDetector, DEFAULT_CALIBRATION as C } from './gestureDetector';
 import { L } from './landmarks';
+import { Flight, FLIGHT } from '../../game/flight';
+import { EMPTY_INPUT } from '../types';
 
 const FRAME = 33; // ms, ~30 fps
 
@@ -53,6 +55,43 @@ const flap = (d: ReturnType<typeof createGestureDetector>, t: { now: number }, d
 };
 
 const tests: Record<string, () => void> = {
+  'small torso tilts with planted hips move one lane per tilt'() {
+    const { d, t } = fresh();
+    const flight = new Flight();
+    const tilt = (offset: number, frames = 30) => {
+      for (let i = 0; i < frames; i++) {
+        const lm = pose();
+        lm[L.SHOULDER_L].x += offset;
+        lm[L.SHOULDER_R].x += offset;
+        t.now += FRAME;
+        const g = d.update(lm, t.now, C);
+        flight.update({ ...EMPTY_INPUT, ...g, calibrated: true }, FRAME / 1000);
+      }
+    };
+    tilt(C.shoulderWidth * 0.2);
+    assert.equal(flight.x, FLIGHT.lanes[0], 'a small left tilt shifts one lane');
+    tilt(C.shoulderWidth * 0.2, 90);
+    assert.equal(flight.x, FLIGHT.lanes[0], 'holding the tilt does not keep shifting');
+    tilt(0);
+    assert.equal(flight.x, FLIGHT.lanes[0], 'returning upright keeps the selected lane');
+    tilt(-C.shoulderWidth * 0.2);
+    assert.equal(flight.x, FLIGHT.lanes[1], 'the next right tilt shifts one lane right');
+    tilt(0);
+    tilt(-C.shoulderWidth * 0.2);
+    assert.equal(flight.x, FLIGHT.lanes[2]);
+  },
+  'calibrated resting torso tilt and small shoulder jitter do not steer'() {
+    const d = createGestureDetector();
+    const cal = { ...C, shoulderX: C.hipX + 0.05 };
+    for (let i = 0; i < 60; i++) {
+      const lm = pose();
+      const offset = 0.05 + Math.sin(i) * C.shoulderWidth * 0.04;
+      lm[L.SHOULDER_L].x += offset;
+      lm[L.SHOULDER_R].x += offset;
+      const s = d.update(lm, 1000 + i * FRAME, cal);
+      assert.equal(Math.abs(s.strafe), 0);
+    }
+  },
   'one arm alone cannot flap, and losing tracking clears a half-finished stroke'() {
     const { d, t } = fresh();
     for (const y of [0.2, 0.2, 0.2, 0.38, 0.5, 0.6]) {
