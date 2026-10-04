@@ -1,0 +1,84 @@
+[
+  { "id": "narrator_start_1", "persona": "narrator", "event": "level_start", "level": "kitchen", "loop": false, "text": "[warmly] This is the story of Pidge. A small pigeon, in a very big kitchen, with places to be." },
+  { "id": "narrator_start_2", "persona": "narrator", "event": "level_start", "level": "kitchen", "loop": false, "text": "Every legend begins somewhere. Pidge's began beside a pot of soup... and a very angry chef." },
+  { "id": "narrator_start_3", "persona": "narrator", "event": "level_start", "level": "kitchen", "loop": false, "text": "[softly] Pidge looked up. Somewhere above the cabinets, the sky was waiting." },
+  { "id": "narrator_start_4", "persona": "narrator", "event": "level_start", "level": "kitchen", "loop": false, "text": "And so, once again, Pidge chose violence. Against gravity, specifically." },
+  { "id": "narrator_start_5", "persona": "narrator", "event": "level_start", "level": "kitchen", "loop": false, "text": "The chef had plans for Pidge. Pidge had wings. Only one of them was getting their way." },
+
+  { "id": "narrator_loop_1", "persona": "narrator", "event": "level_start", "level": "kitchen", "loop": true, "text": "[amused] And just like that, Pidge was back in the kitchen. Some say this is how all legends work." },
+  { "id": "narrator_loop_2", "persona": "narrator", "event": "level_start", "level": "kitchen", "loop": true, "text": "Heaven, it turns out, has a back door. It opens directly above the soup." },
+  { "id": "narrator_loop_3", "persona": "narrator", "event": "level_start", "level": "kitchen", "loop": true, "text": "The circle of life. Or, as Pidge would come to call it... the circle of pots." },
+
+  { "id": "narrator_dessert_1", "persona": "narrator", "event": "level_start", "level": "dessert", "text": "The kitchen fell away. Ahead lay the Dessert. Hot sand, hard rocks, and absolutely no cake." },
+  { "id": "narrator_dessert_2", "persona": "narrator", "event": "level_start", "level": "dessert", "text": "[dryly] Someone had misspelled desert on the map. Pidge did not find this funny. The cacti did." },
+  { "id": "narrator_dessert_3", "persona": "narrator", "event": "level_start", "level": "dessert", "text": "Out the window and into the wild. The chef's shouting faded. The cacti began to whisper." },
+  { "id": "narrator_dessert_4", "persona": "narrator", "event": "level_start", "level": "dessert", "text": "Pidge burst into open sky, and the sun said hello. Loudly." },
+
+  { "id": "narrator_heaven_1", "persona": "narrator", "event": "level_start", "level": "heaven", "text": "[awed] And then... the clouds parted. Bird Heaven. A golden halo, and not a single cat." },
+  { "id": "narrator_heaven_2", "persona": "narrator", "event": "level_start", "level": "heaven", "text": "[softly] Pidge had made it. For one moment, there was nothing to dodge. Just sky." },
+  { "id": "narrator_heaven_3", "persona": "narrator", "event": "level_start", "level": "heaven", "text": "Bird Heaven. Where the breadcrumbs are free, and the wind only ever blows upward." },
+
+  { "id": "chef_nearmiss_1", "persona": "chef", "event": "near_miss", "level": "kitchen", "text": "[shouting] HEY! That is my GOOD knife!" },
+  { "id": "chef_nearmiss_2", "persona": "chef", "event": "near_miss", "level": "kitchen", "text": "[furious] You dodged the pot?! The pot NEVER misses!" },
+  { "id": "chef_nearmiss_3", "persona": "chef", "event": "near_miss", "level": "kitchen", "text": "Get back here, you feathered appetizer!" },
+  { "id": "chef_nearmiss_4", "persona": "chef", "event": "near_miss", "level": "kitchen", "text": "[shouting] Somebody close the window! The soup is escaping!" },
+  { "id": "chef_nearmiss_5", "persona": "chef", "event": "near_miss", "level": "kitchen", "text": "So close! [growls] Next time, you are SOUP!" },
+
+  { "id": "chef_idle_1", "persona": "chef", "event": "idle", "level": "kitchen", "text": "[shouting] FLAP HARDER! My souffle has more lift than you!" },
+  { "id": "chef_idle_2", "persona": "chef", "event": "idle", "level": "kitchen", "text": "Oh, you are tired? [laughs] The oven is nice and warm..." },
+  { "id": "chef_idle_3", "persona": "chef", "event": "idle", "level": "kitchen", "text": "You call that flapping? I have seen livelier rotisserie chickens!" },
+  { "id": "chef_idle_4", "persona": "chef", "event": "idle", "level": "kitchen", "text": "[mockingly] Rest your wings, little bird. Right here. On this plate." },
+
+  { "id": "chef_death_pot_1", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["pot"], "text": "[triumphant] Into the pot! FINALLY, some good stock!" },
+  { "id": "chef_death_pot_2", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["pot"], "text": "[laughs] Pigeon casserole! Tonight, we feast!" },
+  { "id": "chef_death_knife_1", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["knife"], "text": "[gasps] My knives! Do you know how long I sharpened those?!" },
+  { "id": "chef_death_knife_2", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["knife"], "text": "Diced! Julienned! [chef's kiss] Perfectly prepared!" },
+  { "id": "chef_death_pin_1", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["pin"], "text": "[laughs] Flipped like a pancake! Magnificent!" },
+  { "id": "chef_death_pin_2", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["pin"], "text": "Sizzle sizzle! That is the sound of DINNER!" },
+  { "id": "chef_death_cat_1", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["cat-paw"], "text": "[cackles] Good kitty! Good kitty gets the drumstick!" },
+  { "id": "chef_death_cat_2", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["cat-paw"], "text": "Even the cat is on my side! [laughs] Even the CAT!" },
+  { "id": "chef_death_fall_1", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["fall"], "text": "[shouting] LEGENDARY FLOP! Straight back onto my cutting board!" },
+  { "id": "chef_death_fall_2", "persona": "chef", "event": "death", "level": "kitchen", "reason": ["fall"], "text": "Gravity, my old friend. [chuckles] Thank you for the delivery." },
+
+  { "id": "narrator_death_cactus_1", "persona": "narrator", "event": "death", "level": "dessert", "reason": ["knife"], "text": "And so Pidge met the cactus. Historians agree... the cactus did not move." },
+  { "id": "narrator_death_cactus_2", "persona": "narrator", "event": "death", "level": "dessert", "reason": ["knife"], "text": "[sighs] The cactus had one job. Unfortunately, it was very good at it." },
+  { "id": "narrator_death_rock_1", "persona": "narrator", "event": "death", "level": "dessert", "reason": ["pot", "pin"], "text": "The rock had sat there for ten thousand years. It was not about to move for a pigeon." },
+  { "id": "narrator_death_rock_2", "persona": "narrator", "event": "death", "level": "dessert", "reason": ["pot", "pin"], "text": "[dryly] A legendary flop, in the sand. The rock would tell this story for centuries." },
+  { "id": "narrator_death_fall_1", "persona": "narrator", "event": "death", "reason": ["fall"], "text": "[solemnly] And so Pidge fell. Not from grace. Just from a fairly normal height." },
+  { "id": "narrator_death_fall_2", "persona": "narrator", "event": "death", "reason": ["fall"], "text": "Pidge stopped flapping. Physics, which had been very patient, did not." },
+  { "id": "narrator_death_cat_1", "persona": "narrator", "event": "death", "reason": ["cat-paw"], "text": "The cat had waited all day for this. [sighs] Honestly? Good for the cat." },
+  { "id": "narrator_death_cat_2", "persona": "narrator", "event": "death", "reason": ["cat-paw"], "text": "Pidge saw the paw. Pidge understood the paw. Pidge did not move. A legendary flop." },
+  { "id": "narrator_death_1", "persona": "narrator", "event": "death", "text": "Not every legend has a happy ending. [pause] Most of them, though, get a second try." },
+  { "id": "narrator_death_2", "persona": "narrator", "event": "death", "text": "[softly] Rest now, Pidge. The kitchen will wait. It always does." },
+
+  { "id": "announcer_nearmiss_1", "persona": "announcer", "event": "near_miss", "text": "[excited] OHHH! By a FEATHER!" },
+  { "id": "announcer_nearmiss_2", "persona": "announcer", "event": "near_miss", "text": "WHAT a dodge! Did you SEE that?!" },
+  { "id": "announcer_nearmiss_3", "persona": "announcer", "event": "near_miss", "text": "[shouting] Threading the needle! This bird has NO fear!" },
+  { "id": "announcer_nearmiss_4", "persona": "announcer", "event": "near_miss", "text": "Close shave! The crowd is on its FEET!" },
+  { "id": "announcer_nearmiss_5", "persona": "announcer", "event": "near_miss", "level": "dessert", "text": "[laughs] Oh-ho-ho! That cactus is FURIOUS!" },
+  { "id": "announcer_nearmiss_6", "persona": "announcer", "event": "near_miss", "level": "dessert", "text": "Too hot to handle! Nothing in this desert can touch that bird!" },
+
+  { "id": "announcer_milestone_1", "persona": "announcer", "event": "milestone", "text": "[excited] Another milestone! This pigeon is ON THE RISE!" },
+  { "id": "announcer_milestone_2", "persona": "announcer", "event": "milestone", "text": "Higher and higher! Somebody call air traffic control!" },
+  { "id": "announcer_milestone_3", "persona": "announcer", "event": "milestone", "text": "Look at those WINGS go! Absolutely textbook!" },
+  { "id": "announcer_milestone_4", "persona": "announcer", "event": "milestone", "text": "Up, up, and AWAY! The sky is getting nervous!" },
+  { "id": "announcer_milestone_5", "persona": "announcer", "event": "milestone", "text": "Keep it coming! This is a feathered FREIGHT TRAIN!" },
+
+  { "id": "announcer_newbest_1", "persona": "announcer", "event": "new_best", "text": "[shouting] NEW PERSONAL BEST! Put it in the record books!" },
+  { "id": "announcer_newbest_2", "persona": "announcer", "event": "new_best", "text": "[excited] RECORD BROKEN! The old you never stood a chance!" },
+  { "id": "announcer_newbest_3", "persona": "announcer", "event": "new_best", "text": "A new high score! Ladies and gentlemen, history is being FLAPPED!" },
+  { "id": "narrator_newbest_1", "persona": "narrator", "event": "new_best", "text": "[warmly] Higher than ever before. Pidge would remember this moment. Briefly." },
+
+  { "id": "announcer_streak_1", "persona": "announcer", "event": "streak", "text": "[shouting] PIDGE IS ON FIRE!" },
+  { "id": "announcer_streak_2", "persona": "announcer", "event": "streak", "text": "Look at those arms GO! UNSTOPPABLE!" },
+  { "id": "announcer_streak_3", "persona": "announcer", "event": "streak", "text": "[excited] Flap frenzy! FLAP FRENZY!" },
+  { "id": "announcer_streak_4", "persona": "announcer", "event": "streak", "text": "Somebody get this bird a sponsorship deal!" },
+
+  { "id": "announcer_idle_1", "persona": "announcer", "event": "idle", "text": "[urgently] Keep flapping! Keep FLAPPING!" },
+  { "id": "announcer_idle_2", "persona": "announcer", "event": "idle", "text": "Uh oh, the wings are slowing down! Don't quit now!" },
+  { "id": "announcer_idle_3", "persona": "announcer", "event": "idle", "text": "[gasps] Is that... a nap? MID-AIR?!" },
+
+  { "id": "announcer_pickup_1", "persona": "announcer", "event": "pickup", "text": "[excited] Worm acquired! Protein, baby!" },
+  { "id": "announcer_pickup_2", "persona": "announcer", "event": "pickup", "text": "Ooh, a juicy one! Snack break!" },
+  { "id": "announcer_pickup_3", "persona": "announcer", "event": "pickup", "text": "Wiggle wiggle, GULP! Fuel for the flight!" }
+]

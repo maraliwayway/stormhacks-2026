@@ -1,0 +1,8 @@
+[
+  {"id": "flap", "duration_seconds": 0.5, "text": "Single quick soft feathery wing flap whoosh of a small pigeon taking off, close mic, no background"},
+  {"id": "death", "duration_seconds": 1.0, "text": "Cartoon bonk impact followed by a puff of feathers and a sad descending slide whistle, comedic"},
+  {"id": "near_miss", "duration_seconds": 0.6, "text": "Fast close whoosh of an object zipping past the ear, cartoon swish, short"},
+  {"id": "new_best", "duration_seconds": 1.6, "text": "Short triumphant cartoon brass fanfare with sparkly chimes, video game new record jingle"},
+  {"id": "level_up", "duration_seconds": 1.4, "text": "Bright magical rising harp glissando and chime, video game new world transition, whimsical"},
+  {"id": "heaven", "duration_seconds": 2.5, "text": "Soft heavenly angelic choir aah with shimmering bells, peaceful, short swell"}
+]

@@ -1,0 +1,8 @@
+{
+  "flap": "flap.mp3",
+  "death": "death.mp3",
+  "near_miss": "near_miss.mp3",
+  "new_best": "new_best.mp3",
+  "level_up": "level_up.mp3",
+  "heaven": "heaven.mp3"
+}

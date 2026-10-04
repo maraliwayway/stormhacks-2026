@@ -8,12 +8,15 @@ import "./style.css";
 import { mountCameraPanel } from "./input/cv/cameraPanel";
 import type { CvInput } from "./input/cv/cvInput";
 import { inputManager } from "./input/inputManager";
+import { installDev3 } from "./net/installDev3";
 import { installScoreSync } from "./net/scoreSync";
 import { gameUi } from "./ui/gameUi";
 
 const stopScoreSync = installScoreSync();
 const host = document.getElementById("game")!;
 gameUi.mount(host);
+// Dev 3 hook: voice director, SFX, leaderboard and live roast. A no-op offline.
+const stopDev3 = installDev3(host);
 gameUi.showMenu(bestScore.get());
 audio.init();
 const stopSoundStatus = audio.onStatus((status) =>
@@ -109,6 +112,7 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     disposed = true;
     stopScoreSync();
+    stopDev3();
     stopSoundStatus();
     stopGameSounds();
     stopPrayerSounds();
