@@ -53,6 +53,59 @@ const flap = (d: ReturnType<typeof createGestureDetector>, t: { now: number }, d
 };
 
 const tests: Record<string, () => void> = {
+  'one arm alone cannot flap, and losing tracking clears a half-finished stroke'() {
+    const { d, t } = fresh();
+    for (const y of [0.2, 0.2, 0.2, 0.38, 0.5, 0.6]) {
+      t.now += FRAME;
+      const lm = pose();
+      lm[L.WRIST_L].y = y;
+      assert.equal(d.update(lm, t.now, C).flapCount, 0);
+    }
+    run(d, t, {}, { wristY: 0.1 }, 200);
+    t.now += FRAME;
+    d.update(null, t.now, C);
+    t.now += FRAME;
+    assert.equal(d.update(pose({ wristY: 0.6 }), t.now, C).flapCount, 0);
+  },
+  'a comfortable downstroke fires near the shoulder line without waiting for arms to reach the hips'() {
+    const { d, t } = fresh();
+    const upY = C.shoulderY - C.shoulderWidth * 0.4;
+    const downY = C.shoulderY + C.shoulderWidth * 0.12;
+    run(d, t, {}, { wristY: upY }, 200);
+    const s = run(d, t, { wristY: upY }, { wristY: downY }, 100);
+    assert.equal(s.flapCount, 1);
+    assert.equal(run(d, t, { wristY: downY }, { wristY: downY }, 500).flapCount, 1, 'holding arms down does not repeat');
+  },
+  'counts every flap at four flaps per second'() {
+    const { d, t } = fresh();
+    const upY = C.shoulderY - C.shoulderWidth * 0.5;
+    const downY = C.shoulderY + C.shoulderWidth * 0.5;
+    for (let i = 0; i < 8; i++) {
+      run(d, t, { wristY: downY }, { wristY: upY }, 125);
+      const s = run(d, t, { wristY: upY }, { wristY: downY }, 125);
+      assert.equal(s.flapCount, i + 1);
+    }
+  },
+  'a lean reaches useful steering within 100 ms and reverses promptly'() {
+    const { d, t } = fresh();
+    const offset = C.shoulderWidth * 0.45;
+    t.now += FRAME;
+    let s = run(d, t, { hipX: C.hipX - offset }, { hipX: C.hipX - offset }, 99);
+    assert.ok(s.strafe > 0.8, `steering after 99 ms: ${s.strafe}`);
+    t.now += FRAME;
+    s = run(d, t, { hipX: C.hipX + offset }, { hipX: C.hipX + offset }, 99);
+    assert.ok(s.strafe < -0.8, `reversed steering after 99 ms: ${s.strafe}`);
+  },
+  'small shoulder-line jitter neither steers nor creates flaps'() {
+    const { d, t } = fresh();
+    for (let i = 0; i < 90; i++) {
+      t.now += FRAME;
+      const jitter = Math.sin(i * 2) * C.shoulderWidth * 0.04;
+      const s = d.update(pose({ wristY: C.shoulderY + jitter, hipX: C.hipX + jitter }), t.now, C);
+      assert.equal(s.flapCount, 0);
+      assert.equal(Math.abs(s.strafe), 0);
+    }
+  },
   'idle: nothing fires'() {
     const { d, t } = fresh();
     const s = run(d, t, {}, {}, 1000);

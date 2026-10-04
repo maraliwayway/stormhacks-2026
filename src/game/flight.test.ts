@@ -5,6 +5,17 @@ import { Flight, FLIGHT } from './flight';
 const active = () => ({ ...EMPTY_INPUT, tracking: true, calibrated: true });
 
 describe('flight physics', () => {
+  it('steers within 100 ms and reverses without a long sideways drift', () => {
+    const flight = new Flight();
+    const input = { ...active(), strafe: 1 };
+    for (let i = 0; i < 6; i++) flight.update(input, 1 / 60);
+    expect(flight.x - 640).toBeGreaterThan(30);
+    const beforeReverse = flight.x;
+    input.strafe = -1;
+    for (let i = 0; i < 6; i++) flight.update(input, 1 / 60);
+    expect(flight.x).toBeLessThan(beforeReverse);
+  });
+
   it('gives one flap over seven metres of lift from rest and caps repeated impulses', () => {
     const flight = new Flight();
     flight.velocity = 0;

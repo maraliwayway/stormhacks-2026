@@ -39,7 +39,7 @@ export async function startTracker(videoEl: HTMLVideoElement): Promise<void> {
   running = true;
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480 },
+      video: { width: 640, height: 480, frameRate: { ideal: 60, max: 60 } },
       audio: false,
     });
     videoEl.srcObject = stream;

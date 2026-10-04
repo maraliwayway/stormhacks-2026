@@ -7,7 +7,7 @@ export const FLIGHT = {
   impulse: 700, maxFall: 150, maxRise: 1000, pixelsPerMetre: 40,
   lanes: [340, 640, 940],
   // Strafing glides: horizontal speed follows the analog strafe value (-1..1).
-  strafeSpeed: 560, strafeResponse: 7, minX: 110, maxX: 1170,
+  strafeSpeed: 560, strafeResponse: 18, minX: 110, maxX: 1170,
 } as const;
 
 export class Flight {

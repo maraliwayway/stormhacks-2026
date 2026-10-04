@@ -24,13 +24,16 @@ export const DEFAULT_CALIBRATION: Calibration = {
 
 /** All distances are in shoulder widths, so they work at any height / distance. */
 export const THRESHOLDS = {
-  flapWindowMs: 400, //     leaving the top zone -> reaching the bottom zone must take at most this
-  flapZoneMargin: 0.25, //  top zone = this far above the shoulder line, bottom zone = this far below
+  flapWindowMs: 400, //     leaving the raised zone -> crossing the shoulder line
+  flapZoneMargin: 0.15, //  re-arm only after wrists rise this far above the shoulders
+  flapDownMargin: 0.02, //  fire just below the shoulder line, early in the downstroke
+  flapMinDownSpeed: 1.2, // shoulder widths / s; a slow arm drop must not count
+  flapRefractoryMs: 120,
   flapPairMs: 400, //       both wrists' downstrokes must land within this of each other
   flapActiveMs: 500, //     `flapping` stays true this long after a flap
   rateWindowMs: 3000,
-  strafeDeadzone: 0.1, //   analog strafe ignores sway smaller than this (shoulder widths)
-  strafeFull: 0.6, //       analog strafe reaches +-1 at this offset
+  strafeDeadzone: 0.08, //  analog strafe ignores sway smaller than this (shoulder widths)
+  strafeFull: 0.45, //      analog strafe reaches +-1 at this offset
   strafeEnter: 0.35, //     boolean strafeLeft/Right (menus) turn on here
   strafeExit: 0.2, //       hysteresis: must come back this close to centre to release
   jumpEnter: 0.25,
@@ -62,8 +65,8 @@ export interface GestureState {
 }
 
 // Landmark units are image fractions, so speeds are small numbers (~0.1-2 /s): beta must be large.
-const mkWristFilter = () => new OneEuroFilter(2.0, 8.0); // fast, needs low lag
-const mkBodyFilter = () => new OneEuroFilter(1.5, 4.0); //  shoulders / hips: calmer
+const mkWristFilter = () => new OneEuroFilter(6.0, 12.0);
+const mkBodyFilter = () => new OneEuroFilter(4.0, 8.0);
 
 export function createGestureDetector() {
   const f = {
@@ -138,16 +141,17 @@ export function createGestureDetector() {
     const hipY = f.hipY.filter((lm[L.HIP_L].y + lm[L.HIP_R].y) / 2, ts);
     const wy = { L: f.wristLy.filter(lm[L.WRIST_L].y, ts), R: f.wristRy.filter(lm[L.WRIST_R].y, ts) };
 
-    // ---- flap: both wrists go from above the shoulder line to below it within 400 ms ----
+    // Both wrists must rise to re-arm, then cross the shoulders on a brisk downstroke.
     let speedSum = 0;
     for (const side of ['L', 'R'] as const) {
       const w = wrist[side];
       const y = wy[side];
+      const downSpeed = w.prevY === null ? 0 : (y - w.prevY) / dt / sw;
       if (y < shoulderY - THRESHOLDS.flapZoneMargin * sw) {
         w.above = true;
         w.lastAboveTs = ts; // last moment the wrist was still in the top zone
-      } else if (w.above && y > shoulderY + THRESHOLDS.flapZoneMargin * sw) {
-        if (ts - w.lastAboveTs <= THRESHOLDS.flapWindowMs) w.downTs = ts;
+      } else if (w.above && y > shoulderY + THRESHOLDS.flapDownMargin * sw) {
+        if (ts - w.lastAboveTs <= THRESHOLDS.flapWindowMs && downSpeed >= THRESHOLDS.flapMinDownSpeed) w.downTs = ts;
         w.above = false;
       }
       if (w.prevY !== null) speedSum += Math.abs(y - w.prevY) / dt / sw;
@@ -159,7 +163,7 @@ export function createGestureDetector() {
     if (
       ts - wl.downTs <= THRESHOLDS.flapPairMs &&
       ts - wr.downTs <= THRESHOLDS.flapPairMs &&
-      ts - lastFlapTs >= THRESHOLDS.refractoryMs
+      ts - lastFlapTs >= THRESHOLDS.flapRefractoryMs
     ) {
       flapCount++;
       lastFlapTs = ts;
