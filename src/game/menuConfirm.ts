@@ -1,6 +1,6 @@
 import type { InputState } from "../input/types";
 
-/** Hands-together contacts and keyboard presses confirm once across scene changes. */
+/** Each hands-together contact confirms once, even across scene changes. */
 export class MenuConfirm {
   private held: boolean;
   private count: number;

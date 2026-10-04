@@ -1,4 +1,3 @@
-import { keyboard } from "../defaultInput";
 import { inputManager } from "../inputManager";
 import { createCalibrationGuide } from "./calibrationGuide";
 import { createCvInput } from "./cvInput";
@@ -9,7 +8,9 @@ import { getLatest } from "./poseTracker";
 // Dev-only page (/cv-test.html): shows the raw InputState the game reads.
 
 const startButton = document.getElementById("start") as HTMLButtonElement;
-const keyboardButton = document.getElementById("kb") as HTMLButtonElement;
+const recalibrateButton = document.getElementById(
+  "recalibrate",
+) as HTMLButtonElement;
 const video = document.getElementById("video") as HTMLVideoElement;
 const output = document.getElementById("out") as HTMLPreElement;
 const stage = document.getElementById("stage")!;
@@ -18,15 +19,13 @@ let cv: ReturnType<typeof createCvInput> | null = null;
 
 function begin() {
   startButton.disabled = true;
-  keyboardButton.disabled = true;
+  recalibrateButton.disabled = false;
   window.setInterval(() => {
     const state = inputManager.getState();
     const camera = getLatest();
     const formatNumber = (value: number) => value.toFixed(2);
     output.textContent = [
-      cv
-        ? `fps ${camera.fps.toFixed(1)} | inference ${camera.inferenceMs.toFixed(1)} ms | ${camera.delegate ?? "loading"}`
-        : "keyboard source",
+      `fps ${camera.fps.toFixed(1)} | inference ${camera.inferenceMs.toFixed(1)} ms | ${camera.delegate ?? "loading"}`,
       `pose latency ${camera.latencyMs.toFixed(1)} ms | skipped busy frames ${camera.droppedFrames}`,
       `tracking ${state.tracking} | calibrated ${state.calibrated}`,
       `flapCount ${state.flapCount} | flapRate ${formatNumber(state.flapRate)}/s | flapping ${state.flapping} | flapVelocity ${formatNumber(state.flapVelocity)}`,
@@ -62,9 +61,4 @@ startButton.onclick = async () => {
   begin();
 };
 
-keyboardButton.onclick = async () => {
-  await keyboard.start();
-  inputManager.setSource(keyboard);
-  keyboardButton.textContent = "Keyboard: Space/arrows";
-  begin();
-};
+recalibrateButton.onclick = () => cv?.recalibrate();

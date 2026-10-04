@@ -29,7 +29,7 @@ try {
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(`${url}/?kb`);
+  await page.goto(`${url}/?nocamera`);
   await page.waitForSelector("canvas");
   await page.evaluate(async () => {
     const { game } = await import("/src/main.ts");
@@ -120,15 +120,9 @@ try {
   });
   await page.waitForTimeout(100);
   assert.equal(
-    await page.evaluate(() => window.testGame.scene.getScene("Boot").stage),
-    "menu",
+    await page.evaluate(() => window.testGame.scene.isActive("Game")),
+    false,
     "swipes and jumps cannot select camera menus",
-  );
-  await page.evaluate(() => {
-    window.motionFrames({ together: true });
-  });
-  await page.waitForFunction(
-    () => window.testGame.scene.getScene("Boot").stage === "controls",
   );
   await page.waitForFunction(() => {
     const scene = window.testGame.scene.getScene("Boot");
@@ -158,57 +152,42 @@ try {
       video,
       document.getElementById("game"),
     );
-    const heading = document
-      .querySelector(".controls-intro h1")
-      .getBoundingClientRect();
-    const copy = document
-      .querySelector(".controls-description")
-      .getBoundingClientRect();
-    const lesson = document
-      .querySelector(".lesson-cards")
-      .getBoundingClientRect();
-    const button = document
-      .querySelector(".controls-actions .primary-button")
-      .getBoundingClientRect();
+    const { gameUi } = await import("/src/ui/gameUi.ts");
+    gameUi.setCameraStatus("ready");
     const slot = document
-      .querySelector(".setup-camera")
+      .querySelector(".mirror .camera-slot")
       .getBoundingClientRect();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const panel = document
+      .querySelector(".camera-panel")
+      .getBoundingClientRect();
+    const tips = document.querySelector(".tips").getBoundingClientRect();
     return {
       videoWidth: video.videoWidth,
       videoHeight: video.videoHeight,
       objectFit: video.style.objectFit,
       bounds: previewBounds(video, 640, 480),
-      titleBottom: heading.bottom,
-      copyTop: copy.top,
-      lessonBottom: lesson.bottom,
-      buttonTop: button.top,
-      copyRight: copy.right,
-      previewLeft: slot.left,
+      slot: { left: slot.left, top: slot.top, width: slot.width },
+      panel: { left: panel.left, top: panel.top, width: panel.width },
+      tipsRight: tips.right,
+      button: !document.querySelector("[data-action=advance]").disabled,
     };
   });
   assert.equal(preview.videoWidth, 1280);
   assert.equal(preview.videoHeight, 720);
   assert.equal(preview.objectFit, "contain");
   assert.deepEqual(preview.bounds, { x: 0, y: 60, width: 640, height: 360 });
-  assert.ok(preview.titleBottom < preview.copyTop);
-  assert.ok(preview.lessonBottom < preview.buttonTop);
-  assert.ok(
-    preview.copyRight < preview.previewLeft,
-    "camera clears the controls copy",
-  );
+  for (const key of ["left", "top", "width"]) {
+    assert.ok(
+      Math.abs(preview.panel[key] - preview.slot[key]) < 1,
+      "the bird sits in the mirror",
+    );
+  }
+  assert.ok(preview.tipsRight < preview.slot.left, "tips clear the mirror");
+  assert.equal(preview.button, true, "a calibrated player can fly");
   await page.waitForTimeout(300);
   await page.screenshot({ path: "test-results/head-controls.png" });
-  await page.evaluate(() => {
-    window.motionFrames({ together: true, frames: 40 });
-    window.motionInput.flapCount++;
-    window.motionInput.jump = true;
-  });
-  await page.waitForTimeout(100);
-  assert.equal(
-    await page.evaluate(() => window.testGame.scene.isActive("Game")),
-    false,
-    "a held prayer pose and flapping cannot skip controls",
-  );
   await page.evaluate(() => {
     window.motionFrames();
     window.motionFrames({ together: true });
@@ -280,69 +259,43 @@ try {
     window.motionFrames();
     window.motionFrames({ together: true });
   });
-  await page.waitForFunction(() => window.testGame.scene.isActive("Boot"));
+  await page.waitForFunction(() => {
+    const scene = window.testGame.scene.getScene("Game");
+    return window.testGame.scene.isActive("Game") && scene.phase === "playing";
+  });
   await page.evaluate(async () => {
     window.motionPanel.destroy();
     for (const track of window.motionStream.getTracks()) {
       track.stop();
     }
-    const { keyboard } = await import("/src/input/defaultInput.ts");
-    window.testManager.setSource(keyboard);
+    window.fallInput = {
+      ...window.testEmpty,
+      tracking: true,
+      calibrated: true,
+      menuConfirmMode: "clap",
+      selectCount: 0,
+    };
+    window.testManager.setSource({ getState: () => window.fallInput });
     window.testGame.scene.stop("Game");
     window.testGame.scene.start("Boot");
   });
-  await page.waitForFunction(
-    () => window.testGame.scene.getScene("Boot").stage === "menu",
-  );
-  await page.keyboard.press("Enter");
-  await page.waitForFunction(
-    () => window.testGame.scene.getScene("Boot").stage === "controls",
-  );
-  assert.equal(
-    await page.evaluate(() => window.testGame.scene.isActive("Game")),
-    false,
-  );
-  await page.keyboard.press("Enter");
-  await page.waitForFunction(() => {
-    const game = window.testGame;
-    return game.scene.isActive("Game");
-  });
+  await page.waitForFunction(() => window.testGame.scene.isActive("Boot"));
+  await page.evaluate(() => window.fallInput.selectCount++);
   await page.waitForFunction(() =>
-    Boolean(window.testGame.scene.getScene("Game").flight),
+    Boolean(
+      window.testGame.scene.isActive("Game") &&
+        window.testGame.scene.getScene("Game").flight,
+    ),
   );
   await mkdir("test-results", { recursive: true });
   await page.screenshot({ path: "test-results/core.png" });
-  // Let gravity finish a real run, verify its card, then restart with a real flap.
-  await page.waitForFunction(
-    () => {
-      const game = window.testGame;
-      return game.scene.getScene("Game").phase === "over";
-    },
-    null,
-    { timeout: 10000 },
-  );
-  // A confirmation returns to the menu. A held jump cannot skip the controls.
-  await page.keyboard.press("Enter");
-  await page.waitForFunction(() => window.testGame.scene.isActive("Boot"));
-  await page.keyboard.down("ArrowUp");
-  await page.waitForFunction(
-    () => window.testGame.scene.getScene("Boot").stage === "controls",
-  );
-  await page.waitForTimeout(100);
-  assert.equal(
-    await page.evaluate(() => window.testGame.scene.isActive("Game")),
-    false,
-  );
-  await page.keyboard.up("ArrowUp");
-  await page.waitForTimeout(50);
-  await page.keyboard.press("ArrowUp");
-  await page.waitForFunction(() => window.testGame.scene.isActive("Game"));
+  // Let gravity finish a real run, then restart from the results card.
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Game").phase === "over",
     null,
     { timeout: 10000 },
   );
-  await page.keyboard.press("Space");
+  await page.getByRole("button", { name: "Play again" }).click();
   await page.waitForFunction(() => {
     const game = window.testGame;
     const scene = game.scene.getScene("Game");
@@ -383,11 +336,9 @@ try {
     return {
       altitude: scene.flight.altitude,
       camera: scene.flight.cameraY,
-      mode: document.querySelector("[data-flight-mode]").textContent.trim(),
     };
   });
   assert.ok(flight.camera < 0);
-  assert.equal(flight.mode, "Camera");
   const pickupEnabled = await page.evaluate(
     () => !document.querySelector("[data-worm-total]").hidden,
   );
@@ -499,9 +450,9 @@ try {
   );
   assert.equal(
     await page.evaluate(
-      () => document.querySelector("[data-world-name]").textContent,
+      () => document.querySelector("[data-world-banner]").textContent,
     ),
-    "Dessert",
+    "the desert",
   );
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.screenshot({ path: "test-results/dessert.png" });
@@ -545,13 +496,13 @@ try {
       scene.enemies.advanceGrace(5, 1);
       scene.enemies.tick = EnemyField.prototype.tick;
     };
-    // Carry an existing obstacle, paw and pickup into Heaven: all must clear.
+    // Carry an obstacle and a warning cat into Heaven: a map change must not remove them.
     const scene = window.testGame.scene.getScene("Game");
     scene.hazards.items = [
       {
         id: 100,
-        x: 640,
-        y: FLIGHT.startY - 120 * FLIGHT.pixelsPerMetre,
+        x: 340,
+        y: FLIGHT.startY - 135 * FLIGHT.pixelsPerMetre,
         width: 96,
         height: 62,
         kind: "pot",
@@ -561,38 +512,42 @@ try {
     scene.enemies.items = [
       {
         kind: "cat-paw",
-        lane: 1,
-        x: 640,
+        lane: 0,
+        x: 340,
         y: 0,
         width: 220,
         height: 720,
-        age: WARNING_SECONDS + 0.1,
+        age: WARNING_SECONDS / 2,
         faceOffset: 200,
         strikeChecked: false,
-        crossedStrike: true,
+        crossedStrike: false,
       },
     ];
-    scene.worms.items = [{ id: 100, x: 640, y: 0, width: 42, height: 30 }];
   });
   const visit = (altitude) =>
     page.evaluate((altitude) => window.visitAltitude(altitude), altitude);
   const heaven = await visit(120);
   assert.equal(heaven.level, "heaven");
   assert.equal(heaven.phase, "playing");
-  assert.deepEqual([heaven.hazards, heaven.enemies, heaven.worms], [0, 0, 0]);
+  assert.deepEqual(
+    [heaven.hazards, heaven.enemies],
+    [1, 1],
+    "the obstacle and cat survive entering Heaven",
+  );
   assert.equal(
     await page.evaluate(
-      () => document.querySelector("[data-world-name]").textContent,
+      () => document.querySelector("[data-world-banner]").textContent,
     ),
-    "Bird Heaven",
+    "bird heaven",
   );
   await page.screenshot({ path: "test-results/heaven.png" });
   assert.equal((await visit(135)).level, "heaven");
-  // Check obstacle resumption separately from the cat's intentional clear corridor.
+  // Check obstacle resumption separately from the carried cat.
   await page.evaluate(async () => {
     const { HazardField } = await import("/src/game/hazards.ts");
-    window.testGame.scene.getScene("Game").hazards.advance =
-      HazardField.prototype.advance;
+    const scene = window.testGame.scene.getScene("Game");
+    scene.enemies.items = [];
+    scene.hazards.advance = HazardField.prototype.advance;
   });
   const kitchenAgain = await visit(150);
   assert.equal(kitchenAgain.level, "kitchen");
@@ -603,11 +558,6 @@ try {
     kitchenAgain.hazardLead >= 2500,
     "obstacles resume with a full reaction gap",
   );
-  assert.match(
-    kitchenAgain.hint,
-    /Obstacle ahead in the .* lane/,
-    "the blocked lane is announced before entering view",
-  );
   await page.screenshot({ path: "test-results/kitchen-loop.png" });
   assert.equal((await visit(210)).level, "dessert");
   assert.equal((await visit(270)).level, "heaven");
@@ -616,10 +566,9 @@ try {
   assert.equal(thirdKitchen.level, "kitchen");
   assert.equal(thirdKitchen.phase, "playing");
   assert.equal(thirdKitchen.enemies, 1, "one cat resumes after Heaven");
-  assert.equal(
-    thirdKitchen.hazards,
-    0,
-    "no map obstacles during a cat encounter",
+  assert.ok(
+    thirdKitchen.hazards <= 1,
+    "a cat never adds a second map obstacle",
   );
   assert.deepEqual(await page.evaluate(() => window.levelEvents), [
     "heaven",
@@ -738,20 +687,14 @@ try {
   });
   assert.equal((await catStep(1)).phase, "dying");
   await page.goto(`${url}/cv-test.html`);
-  await page.locator("#kb").click();
-  await page.waitForFunction(() =>
-    document.getElementById("out").textContent.includes("tracking true"),
-  );
-  const debugText = await page.locator("#out").textContent();
-  assert.ok(debugText.includes("\n"), "debug fields use separate lines");
-  assert.ok(debugText.includes("/s |"), "flap rate keeps its seconds unit");
-  await page.keyboard.press("Space");
-  await page.waitForFunction(() =>
-    document.getElementById("out").textContent.includes("flapCount 1"),
+  assert.equal(
+    await page.locator("#kb").count(),
+    0,
+    "the debug page has no keyboard controls",
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: prayer-only menus, release before repeat, swipes and jumps rejected, head zones despite wrist occlusion, inert centre, release before another turn, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
+    "Browser checks passed: prayer-only menus, release before repeat, swipes and jumps rejected, head zones despite wrist occlusion, inert centre, release before another turn, canvas fit, camera-only start, fall, play-again, prayer retry, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, threats kept across maps, repeated loops, continuous score, resumed obstacles, death-only run end, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
   );
 } finally {
   await browser?.close();

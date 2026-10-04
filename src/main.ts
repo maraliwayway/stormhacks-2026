@@ -1,30 +1,34 @@
 import Phaser from "phaser";
+import { audio } from "./audio/audio";
+import { installGameSounds } from "./audio/gameSounds";
 import { BootScene } from "./game/scenes/BootScene";
 import { GameScene } from "./game/scenes/GameScene";
 import { bestScore } from "./game/storage";
 import "./style.css";
 import { mountCameraPanel } from "./input/cv/cameraPanel";
 import type { CvInput } from "./input/cv/cvInput";
-import { keyboard } from "./input/defaultInput";
 import { inputManager } from "./input/inputManager";
 import { installDev3 } from "./net/installDev3";
 import { installScoreSync } from "./net/scoreSync";
 import { gameUi } from "./ui/gameUi";
 
-keyboard.start();
-inputManager.setSource(keyboard);
 const stopScoreSync = installScoreSync();
 const host = document.getElementById("game")!;
 gameUi.mount(host);
 // Dev 3 hook: voice director, SFX, leaderboard and live roast. A no-op offline.
 const stopDev3 = installDev3(host);
-gameUi.updateInput(keyboard.getState(), false);
 gameUi.showMenu(bestScore.get());
+audio.init();
+const stopSoundStatus = audio.onStatus((status) =>
+  gameUi.setSoundStatus(status),
+);
+const stopGameSounds = installGameSounds();
+const stopPrayerSounds = audio.watch(() => inputManager.getState());
 
 export const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: "game",
-  backgroundColor: "#f7f1e5",
+  backgroundColor: "#fbf8ef",
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -37,32 +41,20 @@ export const game = new Phaser.Game({
 /** Exposed for integration checks and the calibration action. */
 export let cvSource: CvInput | null = null;
 let stopCamera: (() => void) | null = null;
-let cameraDesired = false;
 let cameraPending = false;
 let disposed = false;
 
-function chooseKeyboard(): void {
-  cameraDesired = false;
-  stopCamera?.();
-  stopCamera = null;
-  cvSource = null;
-  inputManager.setSource(keyboard);
-  gameUi.setCameraStatus("idle");
-  gameUi.updateInput(keyboard.getState(), false);
-}
-
-/** Camera permission and model initialization start only after the player chooses them. */
+/** The camera is the only controller, so it opens as soon as the page loads. */
 async function enableCamera(): Promise<void> {
-  cameraDesired = true;
-  gameUi.setCameraStatus("loading");
-  if (cameraPending) {
+  if (cameraPending || cvSource) {
     return;
   }
   cameraPending = true;
+  gameUi.setCameraStatus("loading");
   let source: CvInput | null = null;
   try {
     const { createCvInput } = await import("./input/cv/cvInput");
-    if (disposed || !cameraDesired) {
+    if (disposed) {
       return;
     }
     const video = document.createElement("video");
@@ -70,7 +62,7 @@ async function enableCamera(): Promise<void> {
     video.playsInline = true;
     source = createCvInput(video);
     await source.start();
-    if (disposed || !cameraDesired) {
+    if (disposed) {
       source.stop();
       return;
     }
@@ -82,14 +74,13 @@ async function enableCamera(): Promise<void> {
       source?.stop();
     };
     gameUi.setCameraStatus("ready");
-    gameUi.updateInput(source.getState(), true);
+    // Some browsers allow audio once the camera is live; try before the first click.
+    audio.unlock();
   } catch (error) {
     source?.stop();
-    if (!disposed && cameraDesired) {
-      inputManager.setSource(keyboard);
+    if (!disposed) {
       gameUi.setCameraStatus("error");
-      gameUi.updateInput(keyboard.getState(), false);
-      console.warn("[cv] camera unavailable, keyboard is ready", error);
+      console.warn("[cv] camera unavailable", error);
     }
   } finally {
     cameraPending = false;
@@ -97,33 +88,37 @@ async function enableCamera(): Promise<void> {
 }
 
 const removeActions = [
-  gameUi.onAction("keyboard", chooseKeyboard),
   gameUi.onAction("camera", () => {
-    if (cvSource) {
-      return;
-    }
     enableCamera();
   }),
   gameUi.onAction("recalibrate", () => cvSource?.recalibrate()),
+  gameUi.onAction("sound", () => audio.toggleMute()),
   gameUi.onAction("fullscreen", () => {
     const request = document.fullscreenElement
       ? document.exitFullscreen()
-      : host.requestFullscreen();
+      : document.documentElement.requestFullscreen();
     request.catch((error) =>
       console.warn("[ui] fullscreen unavailable", error),
     );
   }),
 ];
 
+// Automated checks drive a scripted pose source instead of a real webcam.
+if (!new URLSearchParams(location.search).has("nocamera")) {
+  enableCamera();
+}
+
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     disposed = true;
-    cameraDesired = false;
     stopScoreSync();
     stopDev3();
+    stopSoundStatus();
+    stopGameSounds();
+    stopPrayerSounds();
+    audio.destroy();
     stopCamera?.();
     removeActions.forEach((remove) => remove());
-    keyboard.stop();
     game.destroy(true);
     gameUi.destroy();
   });

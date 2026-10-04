@@ -17,9 +17,10 @@ const readyField = () => {
 };
 
 describe("cat ambush", () => {
-  it("keeps cats and map obstacles mutually exclusive throughout a long climb", () => {
+  it("never spawns a new obstacle while a cat is out, and never deletes one", () => {
     const enemies = readyField();
     const hazards = new HazardField();
+    let previousIds: number[] = [];
     for (let frame = 0; frame < 600; frame++) {
       const altitude = frame * 0.05 * 25;
       const camera = FLIGHT.startY - altitude * FLIGHT.pixelsPerMetre - 360;
@@ -29,9 +30,11 @@ describe("cat ambush", () => {
         birdY: currentBird.y,
         suppressObstacles: enemies.items.length > 0,
       });
-      expect(enemies.items.length + hazards.items.length).toBeLessThanOrEqual(
-        1,
-      );
+      const ids = hazards.items.map((hazard) => hazard.id);
+      if (enemies.items.length > 0) {
+        expect(ids.every((id) => previousIds.includes(id))).toBe(true);
+      }
+      previousIds = ids;
       enemies.check({ ...currentBird, x: 340 });
     }
   });
