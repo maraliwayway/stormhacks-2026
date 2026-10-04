@@ -127,6 +127,7 @@ export class GameScene extends Phaser.Scene {
     const dt = Math.min(delta, 50) / 1000 * (this.time.now < this.slowUntil ? 0.35 : 1);
     const flaps = this.flight.update(input, dt);
     this.runFlaps += flaps;
+    if (input.tracking && input.calibrated) this.enemies.advanceGrace(Math.min(delta, 50) / 1000, flaps);
     if (flaps > 0) gameEvents.emit('flap', { x: this.flight.x, y: this.flight.y, count: flaps });
     this.bird.setPosition(this.flight.x, this.flight.y);
     this.bird.setAngle(Phaser.Math.Clamp(this.flight.velocity / 25, -18, 20));

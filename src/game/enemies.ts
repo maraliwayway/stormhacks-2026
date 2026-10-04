@@ -5,6 +5,7 @@ import type { Box } from './hazards';
 export const WARNING_SECONDS = 1;
 export const STRIKE_SECONDS = 0.35;
 export const RETREAT_SECONDS = 0.3;
+export const FIRST_CAT_GRACE_SECONDS = 5;
 export { ENCOUNTER_COOLDOWN_SECONDS } from './difficulty';
 
 export interface Enemy extends Box {
@@ -17,6 +18,14 @@ export class EnemyField {
   items: Enemy[] = [];
   private nextAltitude = 20;
   private cooldown = 0;
+  private graceRemaining = FIRST_CAT_GRACE_SECONDS;
+  private hasFlapped = false;
+
+  /** Called only during tracked gameplay, including Heaven, so pauses do not eat the grace period. */
+  advanceGrace(dt: number, flaps: number): void {
+    this.hasFlapped ||= flaps > 0;
+    if (this.hasFlapped) this.graceRemaining = Math.max(0, this.graceRemaining - dt);
+  }
 
   tick(altitude: number, cameraY: number, dt: number, difficulty = getDifficulty(), bird?: Box): void {
     this.cooldown = Math.max(0, this.cooldown - dt);
@@ -28,7 +37,7 @@ export class EnemyField {
     }
     // Keep a crossed strike until check() observes it, even on a delayed frame.
     this.items = this.items.filter(e => e.crossedStrike || e.age < WARNING_SECONDS + STRIKE_SECONDS + RETREAT_SECONDS);
-    if (altitude < this.nextAltitude || this.items.length || this.cooldown > 0 || !bird) return;
+    if (this.graceRemaining > 0 || altitude < this.nextAltitude || this.items.length || this.cooldown > 0 || !bird) return;
     const lane = FLIGHT.lanes.reduce((best, x, index) =>
       Math.abs(x - bird.x) < Math.abs(FLIGHT.lanes[best] - bird.x) ? index : best, 0);
     this.items.push({ kind: 'cat-paw', lane, x: FLIGHT.lanes[lane], y: cameraY + FLIGHT.height / 2,

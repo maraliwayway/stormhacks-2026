@@ -168,6 +168,7 @@ try {
     window.restoreFields = () => {
       const scene = window.testGame.scene.getScene('Game');
       scene.hazards.advance = HazardField.prototype.advance;
+      scene.enemies.advanceGrace(5, 1);
       scene.enemies.tick = EnemyField.prototype.tick;
     };
     // Carry an existing obstacle, paw and pickup into Heaven: all must clear.
@@ -218,7 +219,7 @@ try {
   await page.evaluate(() => {
     const scene = window.testGame.scene.getScene('Game');
     window.testGame.scene.pause('Game');
-    scene.flight.update = () => 0;
+    scene.flight.update = () => window.startGrace ? 1 : 0;
     scene.flight.altitude = 20;
     scene.flight.x = 640;
     scene.hazards.advance = () => {};
@@ -230,6 +231,16 @@ try {
     for (let i = 0; i < frames; i++) scene.update(0, 25);
     return { phase: scene.phase, age: scene.enemies.items[0]?.age, x: scene.enemies.items[0]?.x };
   }, frames);
+  assert.equal((await catStep(40)).age, undefined, 'waiting without flapping does not use grace');
+  await page.evaluate(() => { window.startGrace = true; });
+  assert.equal((await catStep(100)).age, undefined, 'no cat during the first 2.5 seconds');
+  await page.evaluate(() => { window.startGrace = false; window.testInput.tracking = false; });
+  assert.equal((await catStep(240)).age, undefined, 'tracking pause preserves remaining grace');
+  await page.evaluate(() => { window.testInput.tracking = true; });
+  assert.equal((await catStep(99)).age, undefined, 'no cat before five active seconds');
+  const firstCat = await catStep(2);
+  assert.equal(firstCat.phase, 'playing');
+  assert.ok(firstCat.age >= 0 && firstCat.age < 0.05, 'first cat starts a fresh warning');
   assert.equal((await catStep(20)).phase, 'playing');
   await page.screenshot({ path: 'test-results/cat-warning.png' });
   const catAge = await page.evaluate(() => {
