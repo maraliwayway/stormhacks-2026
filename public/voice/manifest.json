@@ -1,0 +1,589 @@
+[
+  {
+    "id": "narrator_start_1",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "kitchen",
+    "loop": false,
+    "caption": "This is the story of Pidge. A small pigeon, in a very big kitchen, with places to be.",
+    "file": "narrator_start_1.mp3"
+  },
+  {
+    "id": "narrator_start_2",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "kitchen",
+    "loop": false,
+    "caption": "Every legend begins somewhere. Pidge's began beside a pot of soup… and a very angry chef.",
+    "file": "narrator_start_2.mp3"
+  },
+  {
+    "id": "narrator_start_3",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "kitchen",
+    "loop": false,
+    "caption": "Pidge looked up. Somewhere above the cabinets, the sky was waiting.",
+    "file": "narrator_start_3.mp3"
+  },
+  {
+    "id": "narrator_start_4",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "kitchen",
+    "loop": false,
+    "caption": "And so, once again, Pidge chose violence. Against gravity, specifically.",
+    "file": "narrator_start_4.mp3"
+  },
+  {
+    "id": "narrator_start_5",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "kitchen",
+    "loop": false,
+    "caption": "The chef had plans for Pidge. Pidge had wings. Only one of them was getting their way.",
+    "file": "narrator_start_5.mp3"
+  },
+  {
+    "id": "narrator_loop_1",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "kitchen",
+    "loop": true,
+    "caption": "And just like that, Pidge was back in the kitchen. Some say this is how all legends work.",
+    "file": "narrator_loop_1.mp3"
+  },
+  {
+    "id": "narrator_loop_2",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "kitchen",
+    "loop": true,
+    "caption": "Heaven, it turns out, has a back door. It opens directly above the soup.",
+    "file": "narrator_loop_2.mp3"
+  },
+  {
+    "id": "narrator_loop_3",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "kitchen",
+    "loop": true,
+    "caption": "The circle of life. Or, as Pidge would come to call it… the circle of pots.",
+    "file": "narrator_loop_3.mp3"
+  },
+  {
+    "id": "narrator_dessert_1",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "dessert",
+    "caption": "The kitchen fell away. Ahead lay the Dessert. Hot sand, hard rocks, and absolutely no cake.",
+    "file": "narrator_dessert_1.mp3"
+  },
+  {
+    "id": "narrator_dessert_2",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "dessert",
+    "caption": "Someone had misspelled desert on the map. Pidge did not find this funny. The cacti did.",
+    "file": "narrator_dessert_2.mp3"
+  },
+  {
+    "id": "narrator_dessert_3",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "dessert",
+    "caption": "Out the window and into the wild. The chef's shouting faded. The cacti began to whisper.",
+    "file": "narrator_dessert_3.mp3"
+  },
+  {
+    "id": "narrator_dessert_4",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "dessert",
+    "caption": "Pidge burst into open sky, and the sun said hello. Loudly.",
+    "file": "narrator_dessert_4.mp3"
+  },
+  {
+    "id": "narrator_heaven_1",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "heaven",
+    "caption": "And then… the clouds parted. Bird Heaven. A golden halo, and not a single cat.",
+    "file": "narrator_heaven_1.mp3"
+  },
+  {
+    "id": "narrator_heaven_2",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "heaven",
+    "caption": "Pidge had made it. For one moment, there was nothing to dodge. Just sky.",
+    "file": "narrator_heaven_2.mp3"
+  },
+  {
+    "id": "narrator_heaven_3",
+    "persona": "narrator",
+    "event": "level_start",
+    "level": "heaven",
+    "caption": "Bird Heaven. Where the breadcrumbs are free, and the wind only ever blows upward.",
+    "file": "narrator_heaven_3.mp3"
+  },
+  {
+    "id": "chef_nearmiss_1",
+    "persona": "chef",
+    "event": "near_miss",
+    "level": "kitchen",
+    "caption": "HEY! That is my GOOD knife!",
+    "file": "chef_nearmiss_1.mp3"
+  },
+  {
+    "id": "chef_nearmiss_2",
+    "persona": "chef",
+    "event": "near_miss",
+    "level": "kitchen",
+    "caption": "You dodged the pot?! The pot NEVER misses!",
+    "file": "chef_nearmiss_2.mp3"
+  },
+  {
+    "id": "chef_nearmiss_3",
+    "persona": "chef",
+    "event": "near_miss",
+    "level": "kitchen",
+    "caption": "Get back here, you feathered appetizer!",
+    "file": "chef_nearmiss_3.mp3"
+  },
+  {
+    "id": "chef_nearmiss_4",
+    "persona": "chef",
+    "event": "near_miss",
+    "level": "kitchen",
+    "caption": "Somebody close the window! The soup is escaping!",
+    "file": "chef_nearmiss_4.mp3"
+  },
+  {
+    "id": "chef_nearmiss_5",
+    "persona": "chef",
+    "event": "near_miss",
+    "level": "kitchen",
+    "caption": "So close! Next time, you are SOUP!",
+    "file": "chef_nearmiss_5.mp3"
+  },
+  {
+    "id": "chef_idle_1",
+    "persona": "chef",
+    "event": "idle",
+    "level": "kitchen",
+    "caption": "FLAP HARDER! My souffle has more lift than you!",
+    "file": "chef_idle_1.mp3"
+  },
+  {
+    "id": "chef_idle_2",
+    "persona": "chef",
+    "event": "idle",
+    "level": "kitchen",
+    "caption": "Oh, you are tired? The oven is nice and warm…",
+    "file": "chef_idle_2.mp3"
+  },
+  {
+    "id": "chef_idle_3",
+    "persona": "chef",
+    "event": "idle",
+    "level": "kitchen",
+    "caption": "You call that flapping? I have seen livelier rotisserie chickens!",
+    "file": "chef_idle_3.mp3"
+  },
+  {
+    "id": "chef_idle_4",
+    "persona": "chef",
+    "event": "idle",
+    "level": "kitchen",
+    "caption": "Rest your wings, little bird. Right here. On this plate.",
+    "file": "chef_idle_4.mp3"
+  },
+  {
+    "id": "chef_death_pot_1",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "pot"
+    ],
+    "caption": "Into the pot! FINALLY, some good stock!",
+    "file": "chef_death_pot_1.mp3"
+  },
+  {
+    "id": "chef_death_pot_2",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "pot"
+    ],
+    "caption": "Pigeon casserole! Tonight, we feast!",
+    "file": "chef_death_pot_2.mp3"
+  },
+  {
+    "id": "chef_death_knife_1",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "knife"
+    ],
+    "caption": "My knives! Do you know how long I sharpened those?!",
+    "file": "chef_death_knife_1.mp3"
+  },
+  {
+    "id": "chef_death_knife_2",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "knife"
+    ],
+    "caption": "Diced! Julienned! Perfectly prepared!",
+    "file": "chef_death_knife_2.mp3"
+  },
+  {
+    "id": "chef_death_pin_1",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "pin"
+    ],
+    "caption": "Flipped like a pancake! Magnificent!",
+    "file": "chef_death_pin_1.mp3"
+  },
+  {
+    "id": "chef_death_pin_2",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "pin"
+    ],
+    "caption": "Sizzle sizzle! That is the sound of DINNER!",
+    "file": "chef_death_pin_2.mp3"
+  },
+  {
+    "id": "chef_death_cat_1",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "cat-paw"
+    ],
+    "caption": "Good kitty! Good kitty gets the drumstick!",
+    "file": "chef_death_cat_1.mp3"
+  },
+  {
+    "id": "chef_death_cat_2",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "cat-paw"
+    ],
+    "caption": "Even the cat is on my side! Even the CAT!",
+    "file": "chef_death_cat_2.mp3"
+  },
+  {
+    "id": "chef_death_fall_1",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "fall"
+    ],
+    "caption": "LEGENDARY FLOP! Straight back onto my cutting board!",
+    "file": "chef_death_fall_1.mp3"
+  },
+  {
+    "id": "chef_death_fall_2",
+    "persona": "chef",
+    "event": "death",
+    "level": "kitchen",
+    "reason": [
+      "fall"
+    ],
+    "caption": "Gravity, my old friend. Thank you for the delivery.",
+    "file": "chef_death_fall_2.mp3"
+  },
+  {
+    "id": "narrator_death_cactus_1",
+    "persona": "narrator",
+    "event": "death",
+    "level": "dessert",
+    "reason": [
+      "knife"
+    ],
+    "caption": "And so Pidge met the cactus. Historians agree… the cactus did not move.",
+    "file": "narrator_death_cactus_1.mp3"
+  },
+  {
+    "id": "narrator_death_cactus_2",
+    "persona": "narrator",
+    "event": "death",
+    "level": "dessert",
+    "reason": [
+      "knife"
+    ],
+    "caption": "The cactus had one job. Unfortunately, it was very good at it.",
+    "file": "narrator_death_cactus_2.mp3"
+  },
+  {
+    "id": "narrator_death_rock_1",
+    "persona": "narrator",
+    "event": "death",
+    "level": "dessert",
+    "reason": [
+      "pot",
+      "pin"
+    ],
+    "caption": "The rock had sat there for ten thousand years. It was not about to move for a pigeon.",
+    "file": "narrator_death_rock_1.mp3"
+  },
+  {
+    "id": "narrator_death_rock_2",
+    "persona": "narrator",
+    "event": "death",
+    "level": "dessert",
+    "reason": [
+      "pot",
+      "pin"
+    ],
+    "caption": "A legendary flop, in the sand. The rock would tell this story for centuries.",
+    "file": "narrator_death_rock_2.mp3"
+  },
+  {
+    "id": "narrator_death_fall_1",
+    "persona": "narrator",
+    "event": "death",
+    "reason": [
+      "fall"
+    ],
+    "caption": "And so Pidge fell. Not from grace. Just from a fairly normal height.",
+    "file": "narrator_death_fall_1.mp3"
+  },
+  {
+    "id": "narrator_death_fall_2",
+    "persona": "narrator",
+    "event": "death",
+    "reason": [
+      "fall"
+    ],
+    "caption": "Pidge stopped flapping. Physics, which had been very patient, did not.",
+    "file": "narrator_death_fall_2.mp3"
+  },
+  {
+    "id": "narrator_death_cat_1",
+    "persona": "narrator",
+    "event": "death",
+    "reason": [
+      "cat-paw"
+    ],
+    "caption": "The cat had waited all day for this. Honestly? Good for the cat.",
+    "file": "narrator_death_cat_1.mp3"
+  },
+  {
+    "id": "narrator_death_cat_2",
+    "persona": "narrator",
+    "event": "death",
+    "reason": [
+      "cat-paw"
+    ],
+    "caption": "Pidge saw the paw. Pidge understood the paw. Pidge did not move. A legendary flop.",
+    "file": "narrator_death_cat_2.mp3"
+  },
+  {
+    "id": "narrator_death_1",
+    "persona": "narrator",
+    "event": "death",
+    "caption": "Not every legend has a happy ending. Most of them, though, get a second try.",
+    "file": "narrator_death_1.mp3"
+  },
+  {
+    "id": "narrator_death_2",
+    "persona": "narrator",
+    "event": "death",
+    "caption": "Rest now, Pidge. The kitchen will wait. It always does.",
+    "file": "narrator_death_2.mp3"
+  },
+  {
+    "id": "announcer_nearmiss_1",
+    "persona": "announcer",
+    "event": "near_miss",
+    "caption": "OHHH! By a FEATHER!",
+    "file": "announcer_nearmiss_1.mp3"
+  },
+  {
+    "id": "announcer_nearmiss_2",
+    "persona": "announcer",
+    "event": "near_miss",
+    "caption": "WHAT a dodge! Did you SEE that?!",
+    "file": "announcer_nearmiss_2.mp3"
+  },
+  {
+    "id": "announcer_nearmiss_3",
+    "persona": "announcer",
+    "event": "near_miss",
+    "caption": "Threading the needle! This bird has NO fear!",
+    "file": "announcer_nearmiss_3.mp3"
+  },
+  {
+    "id": "announcer_nearmiss_4",
+    "persona": "announcer",
+    "event": "near_miss",
+    "caption": "Close shave! The crowd is on its FEET!",
+    "file": "announcer_nearmiss_4.mp3"
+  },
+  {
+    "id": "announcer_nearmiss_5",
+    "persona": "announcer",
+    "event": "near_miss",
+    "level": "dessert",
+    "caption": "Oh-ho-ho! That cactus is FURIOUS!",
+    "file": "announcer_nearmiss_5.mp3"
+  },
+  {
+    "id": "announcer_nearmiss_6",
+    "persona": "announcer",
+    "event": "near_miss",
+    "level": "dessert",
+    "caption": "Too hot to handle! Nothing in this desert can touch that bird!",
+    "file": "announcer_nearmiss_6.mp3"
+  },
+  {
+    "id": "announcer_milestone_1",
+    "persona": "announcer",
+    "event": "milestone",
+    "caption": "Another milestone! This pigeon is ON THE RISE!",
+    "file": "announcer_milestone_1.mp3"
+  },
+  {
+    "id": "announcer_milestone_2",
+    "persona": "announcer",
+    "event": "milestone",
+    "caption": "Higher and higher! Somebody call air traffic control!",
+    "file": "announcer_milestone_2.mp3"
+  },
+  {
+    "id": "announcer_milestone_3",
+    "persona": "announcer",
+    "event": "milestone",
+    "caption": "Look at those WINGS go! Absolutely textbook!",
+    "file": "announcer_milestone_3.mp3"
+  },
+  {
+    "id": "announcer_milestone_4",
+    "persona": "announcer",
+    "event": "milestone",
+    "caption": "Up, up, and AWAY! The sky is getting nervous!",
+    "file": "announcer_milestone_4.mp3"
+  },
+  {
+    "id": "announcer_milestone_5",
+    "persona": "announcer",
+    "event": "milestone",
+    "caption": "Keep it coming! This is a feathered FREIGHT TRAIN!",
+    "file": "announcer_milestone_5.mp3"
+  },
+  {
+    "id": "announcer_newbest_1",
+    "persona": "announcer",
+    "event": "new_best",
+    "caption": "NEW PERSONAL BEST! Put it in the record books!",
+    "file": "announcer_newbest_1.mp3"
+  },
+  {
+    "id": "announcer_newbest_2",
+    "persona": "announcer",
+    "event": "new_best",
+    "caption": "RECORD BROKEN! The old you never stood a chance!",
+    "file": "announcer_newbest_2.mp3"
+  },
+  {
+    "id": "announcer_newbest_3",
+    "persona": "announcer",
+    "event": "new_best",
+    "caption": "A new high score! Ladies and gentlemen, history is being FLAPPED!",
+    "file": "announcer_newbest_3.mp3"
+  },
+  {
+    "id": "narrator_newbest_1",
+    "persona": "narrator",
+    "event": "new_best",
+    "caption": "Higher than ever before. Pidge would remember this moment. Briefly.",
+    "file": "narrator_newbest_1.mp3"
+  },
+  {
+    "id": "announcer_streak_1",
+    "persona": "announcer",
+    "event": "streak",
+    "caption": "PIDGE IS ON FIRE!",
+    "file": "announcer_streak_1.mp3"
+  },
+  {
+    "id": "announcer_streak_2",
+    "persona": "announcer",
+    "event": "streak",
+    "caption": "Look at those arms GO! UNSTOPPABLE!",
+    "file": "announcer_streak_2.mp3"
+  },
+  {
+    "id": "announcer_streak_3",
+    "persona": "announcer",
+    "event": "streak",
+    "caption": "Flap frenzy! FLAP FRENZY!",
+    "file": "announcer_streak_3.mp3"
+  },
+  {
+    "id": "announcer_streak_4",
+    "persona": "announcer",
+    "event": "streak",
+    "caption": "Somebody get this bird a sponsorship deal!",
+    "file": "announcer_streak_4.mp3"
+  },
+  {
+    "id": "announcer_idle_1",
+    "persona": "announcer",
+    "event": "idle",
+    "caption": "Keep flapping! Keep FLAPPING!",
+    "file": "announcer_idle_1.mp3"
+  },
+  {
+    "id": "announcer_idle_2",
+    "persona": "announcer",
+    "event": "idle",
+    "caption": "Uh oh, the wings are slowing down! Don't quit now!",
+    "file": "announcer_idle_2.mp3"
+  },
+  {
+    "id": "announcer_idle_3",
+    "persona": "announcer",
+    "event": "idle",
+    "caption": "Is that… a nap? MID-AIR?!",
+    "file": "announcer_idle_3.mp3"
+  },
+  {
+    "id": "announcer_pickup_1",
+    "persona": "announcer",
+    "event": "pickup",
+    "caption": "Worm acquired! Protein, baby!",
+    "file": "announcer_pickup_1.mp3"
+  },
+  {
+    "id": "announcer_pickup_2",
+    "persona": "announcer",
+    "event": "pickup",
+    "caption": "Ooh, a juicy one! Snack break!",
+    "file": "announcer_pickup_2.mp3"
+  },
+  {
+    "id": "announcer_pickup_3",
+    "persona": "announcer",
+    "event": "pickup",
+    "caption": "Wiggle wiggle, GULP! Fuel for the flight!",
+    "file": "announcer_pickup_3.mp3"
+  }
+]
