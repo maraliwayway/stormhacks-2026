@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from './game/scenes/BootScene';
+import { GameScene } from './game/scenes/GameScene';
 import './style.css';
 import { keyboard } from './input/defaultInput';
 import { inputManager } from './input/inputManager';
@@ -17,7 +18,7 @@ export const game = new Phaser.Game({
     width: 1280,
     height: 720,
   },
-  scene: [BootScene],
+  scene: [BootScene, GameScene],
 });
 
 if (import.meta.hot) {
