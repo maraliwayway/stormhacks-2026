@@ -1,4 +1,5 @@
 import type { InputState } from "../types";
+import { HAND_FONT } from "./calibrationGuide";
 import { HEAD_STEERING } from "./headSteering";
 import { previewBounds } from "./previewBounds";
 
@@ -33,34 +34,48 @@ export function createHeadSteeringGuide(
       const x = side === -1 ? frame.x : rightEdge;
       const zoneWidth = frame.width * HEAD_STEERING.leftEnter;
       context.fillStyle = active
-        ? "rgba(255,212,107,0.24)"
-        : "rgba(105,240,174,0.08)";
+        ? "rgba(255,209,102,0.35)"
+        : "rgba(36,50,58,0.05)";
       context.fillRect(x, frame.y, zoneWidth, frame.height);
-      context.strokeStyle = active ? "#ffd46b" : "#b7dbd7";
-      context.lineWidth = 3;
+      context.strokeStyle = "#24323a";
+      context.globalAlpha = 0.35;
+      context.lineWidth = 2;
+      context.setLineDash([8, 8]);
       context.beginPath();
       const edge = side === -1 ? leftEdge : rightEdge;
       context.moveTo(edge, frame.y);
       context.lineTo(edge, frame.y + frame.height);
       context.stroke();
+      context.setLineDash([]);
+      context.globalAlpha = 1;
     }
 
-    const labelY = frame.y + frame.height - 36;
-    context.fillStyle = "rgba(17,45,52,0.8)";
-    context.fillRect(frame.x, labelY - 42, frame.width, 70);
-    context.font = "bold 40px sans-serif";
+    const labelY = frame.y + 34;
+    context.font = `34px ${HAND_FONT}`;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillStyle = "#fff4dc";
-    context.fillText("LEFT", frame.x + frame.width * 0.175, labelY);
-    context.fillText("STAY", frame.x + frame.width * 0.5, labelY);
-    context.fillText("RIGHT", frame.x + frame.width * 0.825, labelY);
+    const labels = [
+      ["LEFT", 0.175, -1],
+      ["STAY", 0.5, 0],
+      ["RIGHT", 0.825, 1],
+    ] as const;
+    for (const [label, position, side] of labels) {
+      const active = state.tracking && state.strafe === side;
+      context.fillStyle = active ? "#24323a" : "rgba(36,50,58,0.45)";
+      context.fillText(label, frame.x + frame.width * position, labelY);
+    }
     if (state.tracking && state.headPosition != null) {
       const headX = frame.x + state.headPosition * frame.width;
-      context.fillStyle = state.strafe === 0 ? "#69f0ae" : "#ffd46b";
+      context.fillStyle = "#ffd166";
+      context.strokeStyle = "#24323a";
+      context.lineWidth = 3;
       context.beginPath();
-      context.arc(headX, labelY - 30, 9, 0, Math.PI * 2);
+      context.moveTo(headX, labelY + 22);
+      context.lineTo(headX - 11, labelY + 40);
+      context.lineTo(headX + 11, labelY + 40);
+      context.closePath();
       context.fill();
+      context.stroke();
     }
   };
   animationFrameId = requestAnimationFrame(draw);

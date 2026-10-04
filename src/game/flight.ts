@@ -155,6 +155,11 @@ export class Flight {
       Math.min(Math.abs(distance), FLIGHT.laneSpeed * elapsedSeconds);
   }
 
+  /** The lane the bird is heading for, which changes the moment a turn registers. */
+  get selectedLane(): number {
+    return this.targetLane;
+  }
+
   /** Nearest of the three hazard lanes, used to aim the cat's ambush. */
   get lane(): number {
     return nearestLane(this.x);

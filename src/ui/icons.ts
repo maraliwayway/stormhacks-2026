@@ -1,42 +1,27 @@
-export type IconName =
-  | "wing"
-  | "arrow"
-  | "camera"
-  | "keyboard"
-  | "expand"
-  | "pause"
-  | "play"
-  | "home"
-  | "refresh"
-  | "star"
-  | "check"
-  | "warning";
+export type IconName = "expand" | "palms" | "pause" | "sound" | "soundOff";
 
+/** Drawn for this game: filled ink shapes rather than a stock line-icon set. */
 const PATHS: Record<IconName, string> = {
-  wing: '<path d="M5 17c0-7 6-12 15-13l-2 6-5 1 3 2-5 2 2 2-5 1-3 3v-4Z"/><path d="m5 18 9-9"/>',
-  arrow: '<path d="M4 12h15m-6-6 6 6-6 6"/>',
-  camera:
-    '<path d="m8 5-2 3H3v12h18V8h-3l-2-3H8Z"/><circle cx="12" cy="13" r="4"/>',
-  keyboard:
-    '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h1m4 0h1m4 0h1M6 12h1m4 0h1m4 0h1M7 16h10"/>',
-  expand: '<path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/>',
-  pause: '<path d="M8 5v14m8-14v14"/>',
-  play: '<path d="m8 4 12 8-12 8V4Z"/>',
-  home: '<path d="m3 10 9-7 9 7v11h-6v-7H9v7H3V10Z"/>',
-  refresh: '<path d="M20 10a8 8 0 1 0-1 7M20 3v7h-7"/>',
-  star: '<path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1 3-6Z"/>',
-  check: '<path d="m5 12 4 4L19 6"/>',
-  warning: '<path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5m0 3v.2"/>',
+  palms:
+    '<path fill="currentColor" d="M11.2 21.5V7.6c0-2.6-.9-4.6-2.3-4.6-1.2 0-1.9 1.2-1.9 3.2v6.3l-2.8 3.1v5.9h7Zm1.6 0V7.6c0-2.6.9-4.6 2.3-4.6 1.2 0 1.9 1.2 1.9 3.2v6.3l2.8 3.1v5.9h-7Z"/>',
+  expand:
+    '<path fill="currentColor" d="M3 3h7v3H6v4H3V3Zm11 0h7v7h-3V6h-4V3ZM3 14h3v4h4v3H3v-7Zm15 0h3v7h-7v-3h4v-4Z"/>',
+  pause:
+    '<rect x="5" y="4" width="5" height="16" rx="1.6" fill="currentColor"/><rect x="14" y="4" width="5" height="16" rx="1.6" fill="currentColor"/>',
+  sound:
+    '<path fill="currentColor" d="M3 9h4l5-4.5v15L7 15H3V9Z"/><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M15.5 9c1.4 1.6 1.4 4.4 0 6M18.5 6.2c3 3.2 3 8.4 0 11.6"/>',
+  soundOff:
+    '<path fill="currentColor" d="M3 9h4l5-4.5v15L7 15H3V9Z"/><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="m15.5 9.5 5 5m0-5-5 5"/>',
 };
 
 export function icon(name: IconName, className = ""): string {
-  return `<svg class="icon ${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name]}</svg>`;
+  return `<svg class="icon icon-${name} ${className}" viewBox="0 0 24 24" aria-hidden="true">${PATHS[name]}</svg>`;
 }
 
 /** The same little figure demonstrates the actual movements before a first run. */
 export function movementFigure(kind: "flap" | "head" | "dodge"): string {
   if (kind === "dodge") {
-    return `<svg viewBox="0 0 180 120" class="movement-figure" aria-hidden="true"><path d="M35 12v95M90 12v95M145 12v95" class="figure-lanes"/><path d="M90 66c15 0 19-19 39-19" class="figure-arrow"/><path d="m119 40 10 7-10 7" class="figure-arrow"/><rect x="73" y="19" width="34" height="20" rx="6" class="figure-obstacle"/><ellipse cx="90" cy="82" rx="19" ry="15" class="figure-body"/><path d="m108 78 12 5-12 5" class="figure-beak"/><circle cx="99" cy="77" r="2.5" class="figure-eye"/></svg>`;
+    return `<svg viewBox="0 0 180 120" class="movement-figure" aria-hidden="true"><path d="M60 6v108M120 6v108" class="figure-lanes"/><path d="M72 36 75 12l13 12M108 36l-3-24-13 12" class="figure-cat"/><circle cx="90" cy="42" r="20" class="figure-cat"/><path d="M83 38v5m14-5v5" class="figure-limbs"/><path d="M94 92h36" class="figure-arrow"/><path d="m122 84 9 8-9 8" class="figure-arrow"/><ellipse cx="152" cy="92" rx="15" ry="12" class="figure-body"/></svg>`;
   }
   return `<svg viewBox="0 0 180 120" class="movement-figure figure-${kind}" aria-hidden="true"><path d="M33 103h114" class="figure-ground"/><g class="figure-person"><circle cx="90" cy="27" r="12" class="figure-head"/><path d="M90 45v35m0 0-18 22m18-22 18 22" class="figure-limbs"/><path d="m90 49-29 8-21-25" class="figure-limbs figure-arm-left"/><path d="m90 49 29 8 21-25" class="figure-limbs figure-arm-right"/></g>${kind === "flap" ? '<path d="m25 44 2 19m-5-6 5 6 6-5m121-14-2 19m-6-5 6 5 5-6" class="figure-arrow"/>' : '<path d="M46 18H27m6-5-6 5 6 5m101-5h19m-6-5 6 5-6 5" class="figure-arrow"/>'}</svg>`;
 }

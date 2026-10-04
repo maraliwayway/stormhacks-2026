@@ -50,18 +50,25 @@ describe("hazards", () => {
     expect(field.items[0].y).toBeLessThan(-50000 + 360 - HAZARD_MIN_LEAD);
   });
 
-  it("clears every obstacle for a cat and resumes with a fresh safe lead distance", () => {
+  it("keeps a visible obstacle during a cat and spawns no new one until it ends", () => {
     const field = new HazardField();
     field.advance(0, { birdY: 550 });
-    const firstId = field.items[0].id;
+    const first = field.items[0];
+    const firstId = first.id;
     field.advance(-600, { birdY: -240, suppressObstacles: true });
+    // The existing obstacle never vanishes because a cat appeared.
+    expect(field.items).toEqual([first]);
+    // Once it scrolls away, nothing replaces it while the cat holds the map.
+    const pastIt = first.y - first.height / 2 - FLIGHT.height;
+    field.advance(pastIt, { birdY: pastIt + 360, suppressObstacles: true });
     expect(field.items).toHaveLength(0);
-    field.advance(-600, { birdY: -240 });
+    field.advance(pastIt, { birdY: pastIt + 360 });
     // A fresh distant row can resume; consumed rows cannot return.
     expect(field.items).toHaveLength(1);
     expect(field.items[0].id).toBeGreaterThan(firstId);
     expect(
-      -240 -
+      pastIt +
+        360 -
         BIRD_BOX.height / 2 -
         (field.items[0].y + field.items[0].height / 2),
     ).toBeGreaterThanOrEqual(HAZARD_MIN_LEAD);

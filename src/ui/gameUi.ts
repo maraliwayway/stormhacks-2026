@@ -1,9 +1,8 @@
+import { type SoundStatus, audio } from "../audio/audio";
 import type { Level } from "../game/levels";
 import type { InputState } from "../input/types";
-import { icon } from "./icons";
 import {
   type RunResult,
-  controlsView,
   menuView,
   pauseView,
   playView,
@@ -12,43 +11,41 @@ import {
 
 export type UiAction =
   | "advance"
-  | "back"
   | "retry"
   | "menu"
   | "pause"
   | "resume"
   | "camera"
-  | "keyboard"
   | "fullscreen"
-  | "recalibrate";
+  | "recalibrate"
+  | "sound";
 export type CameraStatus = "idle" | "loading" | "ready" | "error";
-type View = "menu" | "controls" | "playing" | "paused" | "results";
+type View = "menu" | "playing" | "paused" | "results";
 
-const WORLD_NAMES = {
-  kitchen: "The Kitchen",
-  dessert: "Dessert",
-  heaven: "Bird Heaven",
+export const WORLD_NAMES: Record<Level["id"], string> = {
+  kitchen: "the kitchen",
+  dessert: "the desert",
+  heaven: "bird heaven",
 };
-const WORLD_NUMBERS = { kitchen: "01", dessert: "02", heaven: "03" };
+const BANNER_MS = 2200;
 
-/** Native buttons keep focus, keyboard, touch, and assistive technology in one place. */
+/** Native buttons give mouse users a fallback; the camera drives everything else. */
 class GameUi {
   private root!: HTMLDivElement;
   private actions = new Map<UiAction, Set<() => void>>();
   private view: View = "menu";
   private cameraStatus: CameraStatus = "idle";
-  private cameraActive = false;
   private input: Readonly<InputState> | null = null;
   private artReady = false;
   private artFailed = false;
-  private inputSignature = "";
+  private sound: SoundStatus = "locked";
+  private signature = "";
 
   mount(host: HTMLElement): void {
     this.root = document.createElement("div");
     this.root.id = "game-ui";
     host.appendChild(this.root);
     this.root.addEventListener("click", this.onClick);
-    window.addEventListener("keydown", this.onKey);
     window.addEventListener("blur", this.onBlur);
     document.addEventListener("visibilitychange", this.onVisibility);
     document.addEventListener("fullscreenchange", this.updateFullscreen);
@@ -70,52 +67,11 @@ class GameUi {
       "button[data-action]",
     );
     if (button && !button.disabled) {
+      button.blur();
+      audio.play("click");
       this.emit(button.dataset.action as UiAction);
     }
   };
-
-  private onKey = (event: KeyboardEvent): void => {
-    if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
-      return;
-    }
-    if (event.code === "Escape") {
-      event.preventDefault();
-      if (this.view === "playing") {
-        this.emit("pause");
-      } else if (this.view === "paused") {
-        this.emit("resume");
-      } else if (this.view === "controls") {
-        this.emit("back");
-      }
-    }
-    if (event.code === "Tab" && this.view === "paused") {
-      this.trapFocus(event);
-    }
-    if (event.code === "Tab" && this.view === "results") {
-      this.trapFocus(event);
-    }
-  };
-
-  private trapFocus(event: KeyboardEvent): void {
-    const buttons = Array.from(
-      this.root.querySelectorAll<HTMLButtonElement>(
-        '[role="dialog"] button:not(:disabled)',
-      ),
-    );
-    const first = buttons[0];
-    const last = buttons[buttons.length - 1];
-    if (
-      event.shiftKey &&
-      (document.activeElement === first ||
-        !buttons.includes(document.activeElement as HTMLButtonElement))
-    ) {
-      event.preventDefault();
-      last?.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first?.focus();
-    }
-  }
 
   private onBlur = (): void => {
     if (this.view === "playing") {
@@ -144,25 +100,13 @@ class GameUi {
     this.view = view;
     this.root.dataset.view = view;
     this.root.innerHTML = html;
-    this.root.scrollTop = 0;
-    this.inputSignature = "";
-    this.updateInputUi();
+    this.signature = "";
+    this.update();
     this.updateFullscreen();
-    this.focusHeading();
-  }
-
-  private focusHeading(): void {
-    this.root
-      .querySelector<HTMLElement>("[role=dialog] h1, .paper-screen h1")
-      ?.focus({ preventScroll: true });
   }
 
   showMenu(best: number): void {
     this.render("menu", menuView(best));
-  }
-
-  showControls(): void {
-    this.render("controls", controlsView());
   }
 
   showFlight(): void {
@@ -173,35 +117,60 @@ class GameUi {
     this.showDialog("paused", pauseView());
   }
 
-  showResults(result: RunResult): void {
-    this.showDialog("results", resultView(result));
+  showResults(result: RunResult, levelId: Level["id"]): void {
+    this.showDialog("results", resultView(result, levelId));
   }
 
   private showDialog(view: "paused" | "results", html: string): void {
     this.view = view;
     this.root.dataset.view = view;
-    this.root.querySelector<HTMLElement>(".play-hud")!.inert = true;
+    this.root.querySelector<HTMLElement>("[data-hud]")!.inert = true;
     this.root.querySelector<HTMLElement>("[data-dialog-layer]")!.innerHTML =
       html;
-    this.inputSignature = "";
-    this.updateInputUi();
-    this.focusHeading();
+    this.signature = "";
+    this.update();
   }
 
   hideDialog(): void {
     this.view = "playing";
     this.root.dataset.view = "playing";
-    this.root.querySelector<HTMLElement>(".play-hud")!.inert = false;
+    this.root.querySelector<HTMLElement>("[data-hud]")!.inert = false;
     this.root.querySelector<HTMLElement>("[data-dialog-layer]")!.innerHTML = "";
-    this.inputSignature = "";
-    // Return gameplay focus to the page so Space means a flap, not a button click.
-    (document.activeElement as HTMLElement | null)?.blur();
-    this.updateInputUi();
+    this.signature = "";
+    this.update();
+  }
+
+  /** Briefly names the world the bird just flew into. */
+  showWorld(levelId: Level["id"]): void {
+    const banner = this.root.querySelector<HTMLElement>("[data-world-banner]");
+    if (!banner) {
+      return;
+    }
+    banner.textContent = WORLD_NAMES[levelId];
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const hidden = "translateY(-180%)";
+    const shown = "translateY(0)";
+    banner.getAnimations().forEach((animation) => animation.cancel());
+    // The banner drops in from the top edge and leaves the same way.
+    banner.animate(
+      [
+        { transform: hidden },
+        { transform: shown, offset: still ? 0 : 0.12 },
+        { transform: shown, offset: still ? 1 : 0.8 },
+        { transform: hidden },
+      ],
+      { duration: BANNER_MS, easing: "ease-in-out", fill: "forwards" },
+    );
   }
 
   setCameraStatus(status: CameraStatus): void {
     this.cameraStatus = status;
-    this.updateInputUi();
+    this.update();
+  }
+
+  setSoundStatus(status: SoundStatus): void {
+    this.sound = status;
+    this.update();
   }
 
   setArtReady(ready: boolean): void {
@@ -209,13 +178,13 @@ class GameUi {
     if (ready) {
       this.artFailed = false;
     }
-    this.updateInputUi();
+    this.update();
   }
 
   setArtError(): void {
     this.artFailed = true;
     this.artReady = false;
-    this.updateInputUi();
+    this.update();
   }
 
   pulseAltitude(): void {
@@ -225,7 +194,7 @@ class GameUi {
         ?.animate(
           [
             { transform: "scale(1)" },
-            { transform: "scale(1.14)" },
+            { transform: "scale(1.18)" },
             { transform: "scale(1)" },
           ],
           { duration: 280, easing: "ease-out" },
@@ -233,10 +202,9 @@ class GameUi {
     }
   }
 
-  updateInput(input: Readonly<InputState>, cameraActive: boolean): void {
+  updateInput(input: Readonly<InputState>): void {
     this.input = input;
-    this.cameraActive = cameraActive;
-    this.updateInputUi();
+    this.update();
   }
 
   private text(selector: string, value: string): void {
@@ -247,169 +215,117 @@ class GameUi {
     }
   }
 
-  private updateInputUi(): void {
+  private cameraMessage(): string {
+    if (this.cameraStatus === "error") {
+      return "We couldn’t open your camera. Allow camera access in your browser, then try again.";
+    }
+    if (this.cameraStatus !== "ready") {
+      return "Looking for your camera…";
+    }
+    return "";
+  }
+
+  private menuStatus(ready: boolean): string {
+    if (this.artFailed) {
+      return "The artwork didn’t load. Refresh the page.";
+    }
+    if (this.cameraStatus !== "ready") {
+      return this.cameraStatus === "error"
+        ? "Flap or Flop needs your camera to play."
+        : "Allow camera access when your browser asks.";
+    }
+    if (!this.input?.tracking) {
+      return "Step back until we can see your shoulders.";
+    }
+    return ready
+      ? "That’s you! Ready when you are."
+      : "Hold still for a moment…";
+  }
+
+  private update(): void {
     if (!this.root) {
       return;
     }
-    const ready = this.input?.tracking && this.input.calibrated;
-    const signature = `${this.view}:${this.cameraStatus}:${this.cameraActive}:${ready}:${this.input?.tracking}:${this.artReady}:${this.artFailed}`;
-    if (signature === this.inputSignature) {
+    const ready = Boolean(
+      this.cameraStatus === "ready" &&
+        this.input?.tracking &&
+        this.input.calibrated,
+    );
+    const signature = `${this.view}:${this.cameraStatus}:${ready}:${this.input?.tracking}:${this.artReady}:${this.artFailed}:${this.sound}`;
+    if (signature === this.signature) {
       return;
     }
-    this.inputSignature = signature;
+    this.signature = signature;
+    this.root.classList.toggle("camera-ready", this.cameraStatus === "ready");
+    this.root.dataset.sound = this.sound;
+    for (const button of this.root.querySelectorAll("[data-sound-button]")) {
+      button.setAttribute("aria-pressed", String(this.sound !== "muted"));
+      button.setAttribute(
+        "aria-label",
+        this.sound === "muted" ? "Turn sound on" : "Turn sound off",
+      );
+    }
+    for (const hint of this.root.querySelectorAll<HTMLElement>(
+      "[data-sound-hint]",
+    )) {
+      hint.hidden = this.sound !== "locked";
+    }
+    this.text("[data-camera-message]", this.cameraMessage());
+    for (const retry of this.root.querySelectorAll<HTMLElement>(
+      "[data-camera-retry]",
+    )) {
+      retry.hidden = this.cameraStatus !== "error";
+    }
+    this.text("[data-menu-status]", this.menuStatus(ready));
     const assetStatus = this.root.querySelector<HTMLElement>(
       "[data-asset-status]",
     );
     if (assetStatus) {
-      assetStatus.hidden = this.artReady;
-      assetStatus.textContent = this.artFailed
-        ? "The artwork couldn’t load. Refresh the page to try again."
-        : "Loading your world…";
+      assetStatus.hidden = this.artReady || this.artFailed;
+      assetStatus.textContent = "Loading…";
     }
-    this.root.classList.toggle("camera-active", this.cameraActive);
-    this.root.classList.toggle(
-      "camera-loading",
-      this.cameraStatus === "loading",
-    );
-    for (const button of this.root.querySelectorAll<HTMLButtonElement>(
-      "[data-camera-button]",
-    )) {
-      button.setAttribute("aria-pressed", String(this.cameraActive));
-      button.disabled = this.cameraStatus === "loading";
-    }
-    for (const button of this.root.querySelectorAll("[data-keyboard-button]")) {
-      button.setAttribute("aria-pressed", String(!this.cameraActive));
-    }
-    const message = this.cameraActive
-      ? ready
-        ? "Camera ready. Your wings are the controller."
-        : "Keep your shoulders in view. Hold still for two seconds to calibrate."
-      : this.cameraStatus === "loading"
-        ? "Opening your camera. Allow camera access to use your wings."
-        : this.cameraStatus === "error"
-          ? "Camera unavailable. Keyboard is ready, or try the camera again."
-          : "Keyboard ready. No camera needed.";
-    this.text("[data-input-status]", message);
-    this.text(
-      "[data-camera-label]",
-      this.cameraStatus === "loading" ? "Opening camera…" : "Use my camera",
-    );
-    this.text(
-      "[data-ready-label]",
-      this.cameraActive
-        ? ready
-          ? "Wings ready"
-          : "Finding your wings"
-        : "Keyboard ready",
-    );
-    this.text(
-      "[data-flap-copy]",
-      this.cameraActive
-        ? "Small flaps with both arms make you rise.\nA steady rhythm keeps you flying."
-        : "Tap Space for each flap.\nA steady rhythm keeps you flying.",
-    );
-    this.text(
-      "[data-lane-copy]",
-      this.cameraActive
-        ? "Move your head into LEFT or RIGHT.\nReturn to STAY to reset, keeping your lane."
-        : "Tap left or right to move one lane.\nStay light on your feet.",
-    );
-    const flapKey = this.root.querySelector("[data-flap-key]");
-    const laneKey = this.root.querySelector("[data-lane-key]");
-    if (flapKey) {
-      flapKey.innerHTML = this.cameraActive
-        ? "<span>small movements, both arms</span>"
-        : "<kbd>Space</kbd><span>one tap, one flap</span>";
-    }
-    if (laneKey) {
-      laneKey.innerHTML = this.cameraActive
-        ? "<span>LEFT · STAY · RIGHT</span>"
-        : "<kbd>←</kbd><kbd>→</kbd><span>move left or right</span>";
-    }
-    this.text(
-      "[data-confirm-copy]",
-      this.cameraActive
-        ? ready
-          ? "Palms together to fly. Separate hands before selecting again."
-          : "Calibrate your camera, or choose Keyboard to fly."
-        : "Enter to fly. Esc to go back.",
-    );
-    this.text(
-      "[data-result-confirm]",
-      this.cameraActive
-        ? "Click Fly again to retry. Palms together for the menu."
-        : "Space to retry. Enter for the menu.",
-    );
-    this.text(
-      "[data-pause-confirm]",
-      this.cameraActive
-        ? "Palms together or press Esc to resume."
-        : "Esc to resume",
-    );
     for (const button of this.root.querySelectorAll<HTMLButtonElement>(
       "[data-action=advance]",
     )) {
-      button.disabled =
-        !this.artReady ||
-        this.cameraStatus === "loading" ||
-        (this.cameraActive && !ready);
+      button.disabled = !this.artReady || !ready;
     }
     const notice = this.root.querySelector<HTMLElement>(
       "[data-tracking-notice]",
     );
     if (notice) {
-      notice.hidden = !this.cameraActive || Boolean(ready);
+      notice.hidden = this.view !== "playing" || ready;
       this.text(
         "[data-tracking-copy]",
         this.input?.tracking
-          ? "Hold still in the camera box to calibrate."
-          : "Step back into the camera view.",
+          ? "Hold still for a moment while we find your wings."
+          : "Stand where the camera can see your shoulders.",
       );
-    }
-    const mode = this.root.querySelector<HTMLElement>("[data-flight-mode]");
-    const modeName = this.cameraActive ? "Camera" : "Keyboard";
-    if (mode && mode.dataset.mode !== modeName) {
-      mode.dataset.mode = modeName;
-      mode.innerHTML = `${icon(this.cameraActive ? "camera" : "keyboard")} ${modeName}`;
     }
   }
 
   updateHud(
     altitude: number,
     best: number,
-    level: Level,
     hint: string,
     worms: number | null,
   ): void {
     this.text("[data-altitude]", String(Math.floor(altitude)));
-    this.text("[data-best]", `${Math.floor(best)} m`);
-    this.text("[data-world-name]", WORLD_NAMES[level.id]);
-    this.text("[data-world-number]", WORLD_NUMBERS[level.id]);
-    this.text("[data-flight-hint]", hint);
-    const warning = /Obstacle|CAT!/.test(hint);
-    this.root
-      .querySelector("[data-flight-hint]")
-      ?.classList.toggle("is-warning", warning);
-    const progress = Math.round(
-      Math.min(
-        1,
-        Math.max(0, (altitude - level.start) / (level.end - level.start)),
-      ) * 100,
-    );
-    const bar = this.root.querySelector<HTMLElement>("[data-world-progress]");
-    if (bar) {
-      bar.style.width = `${progress}%`;
-      bar.parentElement!.setAttribute("aria-valuenow", String(progress));
+    this.text("[data-best]", String(Math.floor(best)));
+    const warning = this.root.querySelector<HTMLElement>("[data-flight-hint]");
+    if (warning) {
+      warning.hidden = hint === "";
+      if (warning.textContent !== hint) {
+        warning.textContent = hint;
+      }
     }
     const wormTotal = this.root.querySelector<HTMLElement>("[data-worm-total]");
     if (wormTotal) {
       wormTotal.hidden = worms === null;
-      wormTotal.textContent = `Worms ${worms ?? 0}`;
+      wormTotal.textContent = `worms ${worms ?? 0}`;
     }
   }
 
   destroy(): void {
-    window.removeEventListener("keydown", this.onKey);
     window.removeEventListener("blur", this.onBlur);
     document.removeEventListener("visibilitychange", this.onVisibility);
     document.removeEventListener("fullscreenchange", this.updateFullscreen);

@@ -39,7 +39,16 @@ export const HAZARD_ART = {
       { texture: "dessert-rock-right", width: 106, height: 100 },
     ],
   },
+  // Drawn at boot by rendering/heavenArt.ts; there is no source file for these.
+  heaven: {
+    pot: [{ texture: "heaven-cloud-wide", width: 150, height: 78 }],
+    knife: [{ texture: "heaven-cloud-bolt", width: 110, height: 118 }],
+    pin: [{ texture: "heaven-cloud-small", width: 104, height: 70 }],
+  },
 } as const;
+
+/** Heaven art is generated in code, so the loader must skip it. */
+export const GENERATED_HAZARD_LEVELS: ReadonlySet<string> = new Set(["heaven"]);
 
 export const MAX_HAZARD_HEIGHT = 129;
 
@@ -48,7 +57,6 @@ export function hazardAppearance(
   kind: "pot" | "knife" | "pin",
   levelId: Level["id"],
 ): HazardAppearance {
-  const variants =
-    HAZARD_ART[levelId === "dessert" ? "dessert" : "kitchen"][kind];
+  const variants = HAZARD_ART[levelId][kind];
   return variants[id % variants.length];
 }
