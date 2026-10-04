@@ -1,14 +1,27 @@
-import assert from 'node:assert/strict';
-import { describe, it } from 'vitest';
-import { createGestureDetector, DEFAULT_CALIBRATION as C } from './gestureDetector';
-import { L } from './landmarks';
-import { Flight, FLIGHT } from '../../game/flight';
-import { EMPTY_INPUT } from '../types';
+import assert from "node:assert/strict";
+import { describe, it } from "vitest";
+import { FLIGHT, Flight } from "../../game/flight";
+import { EMPTY_INPUT } from "../types";
+import {
+  DEFAULT_CALIBRATION as C,
+  createGestureDetector,
+} from "./gestureDetector";
+import { L } from "./landmarks";
 
 const FRAME = 33; // ms, ~30 fps
 
-interface Pose { wristY: number; wristRx: number; hipX: number; hipY: number }
-const standing: Pose = { wristY: 0.6, wristRx: 0.6, hipX: C.hipX, hipY: C.hipY };
+interface Pose {
+  wristY: number;
+  wristRx: number;
+  hipX: number;
+  hipY: number;
+}
+const standing: Pose = {
+  wristY: 0.6,
+  wristRx: 0.6,
+  hipX: C.hipX,
+  hipY: C.hipY,
+};
 
 function pose(p: Partial<Pose> = {}) {
   const v = { ...standing, ...p };
@@ -24,7 +37,13 @@ function pose(p: Partial<Pose> = {}) {
 }
 
 /** Feed `ms` of a pose that moves linearly from `from` to `to`. Returns the last state. */
-function run(d: ReturnType<typeof createGestureDetector>, t: { now: number }, from: Partial<Pose>, to: Partial<Pose>, ms: number) {
+function run(
+  d: ReturnType<typeof createGestureDetector>,
+  t: { now: number },
+  from: Partial<Pose>,
+  to: Partial<Pose>,
+  ms: number,
+) {
   const f0 = { ...standing, ...from };
   const f1 = { ...standing, ...to };
   const n = Math.max(1, Math.round(ms / FRAME));
@@ -32,12 +51,16 @@ function run(d: ReturnType<typeof createGestureDetector>, t: { now: number }, fr
   for (let i = 1; i <= n; i++) {
     const k = i / n;
     t.now += FRAME;
-    s = d.update(pose({
-      wristY: f0.wristY + (f1.wristY - f0.wristY) * k,
-      wristRx: f0.wristRx + (f1.wristRx - f0.wristRx) * k,
-      hipX: f0.hipX + (f1.hipX - f0.hipX) * k,
-      hipY: f0.hipY + (f1.hipY - f0.hipY) * k,
-    }), t.now, C);
+    s = d.update(
+      pose({
+        wristY: f0.wristY + (f1.wristY - f0.wristY) * k,
+        wristRx: f0.wristRx + (f1.wristRx - f0.wristRx) * k,
+        hipX: f0.hipX + (f1.hipX - f0.hipX) * k,
+        hipY: f0.hipY + (f1.hipY - f0.hipY) * k,
+      }),
+      t.now,
+      C,
+    );
   }
   return s;
 }
@@ -49,13 +72,17 @@ function fresh() {
   return { d, t };
 }
 
-const flap = (d: ReturnType<typeof createGestureDetector>, t: { now: number }, downMs: number) => {
+const flap = (
+  d: ReturnType<typeof createGestureDetector>,
+  t: { now: number },
+  downMs: number,
+) => {
   run(d, t, { wristY: 0.6 }, { wristY: 0.1 }, 200); // up
   return run(d, t, { wristY: 0.1 }, { wristY: 0.6 }, downMs); // down
 };
 
 const tests: Record<string, () => void> = {
-  'small torso tilts with planted hips move one lane per tilt'() {
+  "small torso tilts with planted hips move one lane per tilt"() {
     const { d, t } = fresh();
     const flight = new Flight();
     const tilt = (offset: number, frames = 30) => {
@@ -69,18 +96,34 @@ const tests: Record<string, () => void> = {
       }
     };
     tilt(C.shoulderWidth * 0.2);
-    assert.equal(flight.x, FLIGHT.lanes[0], 'a small left tilt shifts one lane');
+    assert.equal(
+      flight.x,
+      FLIGHT.lanes[0],
+      "a small left tilt shifts one lane",
+    );
     tilt(C.shoulderWidth * 0.2, 90);
-    assert.equal(flight.x, FLIGHT.lanes[0], 'holding the tilt does not keep shifting');
+    assert.equal(
+      flight.x,
+      FLIGHT.lanes[0],
+      "holding the tilt does not keep shifting",
+    );
     tilt(0);
-    assert.equal(flight.x, FLIGHT.lanes[0], 'returning upright keeps the selected lane');
+    assert.equal(
+      flight.x,
+      FLIGHT.lanes[0],
+      "returning upright keeps the selected lane",
+    );
     tilt(-C.shoulderWidth * 0.2);
-    assert.equal(flight.x, FLIGHT.lanes[1], 'the next right tilt shifts one lane right');
+    assert.equal(
+      flight.x,
+      FLIGHT.lanes[1],
+      "the next right tilt shifts one lane right",
+    );
     tilt(0);
     tilt(-C.shoulderWidth * 0.2);
     assert.equal(flight.x, FLIGHT.lanes[2]);
   },
-  'calibrated resting torso tilt and small shoulder jitter do not steer'() {
+  "calibrated resting torso tilt and small shoulder jitter do not steer"() {
     const d = createGestureDetector();
     const cal = { ...C, shoulderX: C.hipX + 0.05 };
     for (let i = 0; i < 60; i++) {
@@ -92,7 +135,7 @@ const tests: Record<string, () => void> = {
       assert.equal(Math.abs(s.strafe), 0);
     }
   },
-  'one arm alone cannot flap, and losing tracking clears a half-finished stroke'() {
+  "one arm alone cannot flap, and losing tracking clears a half-finished stroke"() {
     const { d, t } = fresh();
     for (const y of [0.2, 0.2, 0.2, 0.38, 0.5, 0.6]) {
       t.now += FRAME;
@@ -106,16 +149,20 @@ const tests: Record<string, () => void> = {
     t.now += FRAME;
     assert.equal(d.update(pose({ wristY: 0.6 }), t.now, C).flapCount, 0);
   },
-  'a comfortable downstroke fires near the shoulder line without waiting for arms to reach the hips'() {
+  "a comfortable downstroke fires near the shoulder line without waiting for arms to reach the hips"() {
     const { d, t } = fresh();
     const upY = C.shoulderY - C.shoulderWidth * 0.4;
     const downY = C.shoulderY + C.shoulderWidth * 0.12;
     run(d, t, {}, { wristY: upY }, 200);
     const s = run(d, t, { wristY: upY }, { wristY: downY }, 100);
     assert.equal(s.flapCount, 1);
-    assert.equal(run(d, t, { wristY: downY }, { wristY: downY }, 500).flapCount, 1, 'holding arms down does not repeat');
+    assert.equal(
+      run(d, t, { wristY: downY }, { wristY: downY }, 500).flapCount,
+      1,
+      "holding arms down does not repeat",
+    );
   },
-  'counts every flap at four flaps per second'() {
+  "counts every flap at four flaps per second"() {
     const { d, t } = fresh();
     const upY = C.shoulderY - C.shoulderWidth * 0.5;
     const downY = C.shoulderY + C.shoulderWidth * 0.5;
@@ -125,7 +172,7 @@ const tests: Record<string, () => void> = {
       assert.equal(s.flapCount, i + 1);
     }
   },
-  'a lean reaches useful steering within 100 ms and reverses promptly'() {
+  "a lean reaches useful steering within 100 ms and reverses promptly"() {
     const { d, t } = fresh();
     const offset = C.shoulderWidth * 0.45;
     t.now += FRAME;
@@ -135,72 +182,105 @@ const tests: Record<string, () => void> = {
     s = run(d, t, { hipX: C.hipX + offset }, { hipX: C.hipX + offset }, 99);
     assert.ok(s.strafe < -0.8, `reversed steering after 99 ms: ${s.strafe}`);
   },
-  'small shoulder-line jitter neither steers nor creates flaps'() {
+  "small shoulder-line jitter neither steers nor creates flaps"() {
     const { d, t } = fresh();
     for (let i = 0; i < 90; i++) {
       t.now += FRAME;
       const jitter = Math.sin(i * 2) * C.shoulderWidth * 0.04;
-      const s = d.update(pose({ wristY: C.shoulderY + jitter, hipX: C.hipX + jitter }), t.now, C);
+      const s = d.update(
+        pose({ wristY: C.shoulderY + jitter, hipX: C.hipX + jitter }),
+        t.now,
+        C,
+      );
       assert.equal(s.flapCount, 0);
       assert.equal(Math.abs(s.strafe), 0);
     }
   },
-  'idle: nothing fires'() {
+  "idle: nothing fires"() {
     const { d, t } = fresh();
     const s = run(d, t, {}, {}, 1000);
     assert.equal(s.tracking, true);
-    assert.deepEqual([s.flapCount, s.strafeLeft, s.strafeRight, s.jump, s.squat], [0, false, false, false, false]);
+    assert.deepEqual(
+      [s.flapCount, s.strafeLeft, s.strafeRight, s.jump, s.squat],
+      [0, false, false, false, false],
+    );
   },
-  'fast arms up/down = 1 flap, fires on the downstroke'() {
+  "fast arms up/down = 1 flap, fires on the downstroke"() {
     const { d, t } = fresh();
     const up = run(d, t, { wristY: 0.6 }, { wristY: 0.1 }, 200);
-    assert.equal(up.flapCount, 0, 'raising arms must not count');
+    assert.equal(up.flapCount, 0, "raising arms must not count");
     const down = run(d, t, { wristY: 0.1 }, { wristY: 0.6 }, 200);
     assert.equal(down.flapCount, 1);
     assert.equal(down.flapping, true);
   },
-  'slow arm drop (>400 ms) is not a flap'() {
+  "slow arm drop (>400 ms) is not a flap"() {
     const { d, t } = fresh();
     run(d, t, { wristY: 0.6 }, { wristY: 0.1 }, 200);
     run(d, t, { wristY: 0.1 }, { wristY: 0.1 }, 600); // hold above
     const s = run(d, t, { wristY: 0.1 }, { wristY: 0.6 }, 2500);
     assert.equal(s.flapCount, 0);
   },
-  'flapRate over 3 s window'() {
+  "flapRate over 3 s window"() {
     const { d, t } = fresh();
     let s = d.update(pose(), t.now, C);
-    for (let i = 0; i < 3; i++) s = flap(d, t, 200);
+    for (let i = 0; i < 3; i++) {
+      s = flap(d, t, 200);
+    }
     assert.equal(s.flapCount, 3);
     assert.ok(s.flapRate > 0.9 && s.flapRate <= 1.0, `flapRate ${s.flapRate}`);
     s = run(d, t, {}, {}, 4000);
-    assert.equal(s.flapRate, 0, 'rate decays when player stops');
-    assert.equal(s.flapCount, 3, 'flapCount never decreases');
+    assert.equal(s.flapRate, 0, "rate decays when player stops");
+    assert.equal(s.flapCount, 3, "flapCount never decreases");
   },
-  'strafe left = hips to larger image x, with hysteresis'() {
+  "strafe left = hips to larger image x, with hysteresis"() {
     const { d, t } = fresh();
     const edge = C.shoulderWidth * 0.35;
     let s = run(d, t, {}, { hipX: C.hipX + edge * 1.3 }, 300);
     assert.equal(s.strafeLeft, true);
     assert.equal(s.strafeRight, false);
-    s = run(d, t, { hipX: C.hipX + edge * 1.3 }, { hipX: C.hipX + edge * 0.8 }, 300); // inside enter, outside exit
-    assert.equal(s.strafeLeft, true, 'hysteresis keeps it on');
+    s = run(
+      d,
+      t,
+      { hipX: C.hipX + edge * 1.3 },
+      { hipX: C.hipX + edge * 0.8 },
+      300,
+    ); // inside enter, outside exit
+    assert.equal(s.strafeLeft, true, "hysteresis keeps it on");
     s = run(d, t, { hipX: C.hipX + edge * 0.8 }, {}, 400);
     assert.equal(s.strafeLeft, false);
   },
-  'analog strafe is proportional, signed, and has a deadzone'() {
+  "analog strafe is proportional, signed, and has a deadzone"() {
     const { d, t } = fresh();
     const sw = C.shoulderWidth;
     let s = run(d, t, {}, { hipX: C.hipX - sw * 0.05 }, 600);
-    assert.equal(s.strafe, 0, 'inside deadzone');
-    s = run(d, t, { hipX: C.hipX - sw * 0.05 }, { hipX: C.hipX - sw * 0.25 }, 600);
+    assert.equal(s.strafe, 0, "inside deadzone");
+    s = run(
+      d,
+      t,
+      { hipX: C.hipX - sw * 0.05 },
+      { hipX: C.hipX - sw * 0.25 },
+      600,
+    );
     assert.ok(s.strafe > 0.1 && s.strafe < 0.5, `slight right ${s.strafe}`);
-    assert.equal(s.strafeRight, false, 'boolean not on yet');
-    s = run(d, t, { hipX: C.hipX - sw * 0.25 }, { hipX: C.hipX - sw * 0.8 }, 600);
+    assert.equal(s.strafeRight, false, "boolean not on yet");
+    s = run(
+      d,
+      t,
+      { hipX: C.hipX - sw * 0.25 },
+      { hipX: C.hipX - sw * 0.8 },
+      600,
+    );
     assert.equal(s.strafe, 1);
-    s = run(d, t, { hipX: C.hipX - sw * 0.8 }, { hipX: C.hipX + sw * 0.8 }, 900);
-    assert.equal(s.strafe, -1, 'left is negative');
+    s = run(
+      d,
+      t,
+      { hipX: C.hipX - sw * 0.8 },
+      { hipX: C.hipX + sw * 0.8 },
+      900,
+    );
+    assert.equal(s.strafe, -1, "left is negative");
   },
-  'a small wave with either raised hand confirms once and must be lowered before another confirmation'() {
+  "a small wave with either raised hand confirms once and must be lowered before another confirmation"() {
     for (const side of [L.WRIST_L, L.WRIST_R]) {
       for (const direction of [-1, 1]) {
         const { d, t } = fresh();
@@ -232,7 +312,7 @@ const tests: Record<string, () => void> = {
       }
     }
   },
-  'one sweep, a stationary raised hand, jitter and flapping cannot confirm'() {
+  "one sweep, a stationary raised hand, jitter and flapping cannot confirm"() {
     const { d, t } = fresh();
     const feed = (x: number, frames = 15) => {
       let s!: ReturnType<typeof d.update>;
@@ -245,12 +325,22 @@ const tests: Record<string, () => void> = {
       return s;
     };
     assert.equal(feed(0.35).waveCount, 0);
-    assert.equal(feed(0.5).waveCount, 0, 'one sweep is not a back-and-forth wave');
-    assert.equal(feed(0.5, 60).waveCount, 0, 'holding and jitter do not confirm');
+    assert.equal(
+      feed(0.5).waveCount,
+      0,
+      "one sweep is not a back-and-forth wave",
+    );
+    assert.equal(
+      feed(0.5, 60).waveCount,
+      0,
+      "holding and jitter do not confirm",
+    );
     const flapper = fresh();
-    for (let i = 0; i < 3; i++) assert.equal(flap(flapper.d, flapper.t, 200).waveCount, 0);
+    for (let i = 0; i < 3; i++) {
+      assert.equal(flap(flapper.d, flapper.t, 200).waveCount, 0);
+    }
   },
-  'tracking loss clears an unfinished wave without replaying it on return'() {
+  "tracking loss clears an unfinished wave without replaying it on return"() {
     const { d, t } = fresh();
     for (const x of [0.35, 0.35, 0.35, 0.5, 0.5, 0.5]) {
       const lm = pose();
@@ -265,13 +355,13 @@ const tests: Record<string, () => void> = {
     t.now += FRAME;
     assert.equal(d.update(lm, t.now, C).waveCount, 0);
   },
-  'strafe right'() {
+  "strafe right"() {
     const { d, t } = fresh();
     const s = run(d, t, {}, { hipX: C.hipX - C.shoulderWidth * 0.5 }, 300);
     assert.equal(s.strafeRight, true);
     assert.equal(s.strafeLeft, false);
   },
-  'jump needs height AND upward speed'() {
+  "jump needs height AND upward speed"() {
     const a = fresh();
     const rise = C.shoulderWidth * 0.4;
     let s = run(a.d, a.t, {}, { hipY: C.hipY - rise }, 150); // fast
@@ -283,13 +373,13 @@ const tests: Record<string, () => void> = {
     s = run(b.d, b.t, {}, { hipY: C.hipY - rise }, 3000); // slow lean/drift
     assert.equal(s.jump, false);
   },
-  'squat'() {
+  squat() {
     const { d, t } = fresh();
     const s = run(d, t, {}, { hipY: C.hipY + C.shoulderWidth * 0.55 }, 400);
     assert.equal(s.squat, true);
     assert.equal(s.jump, false);
   },
-  'lost body: tracking false, everything released, recovers'() {
+  "lost body: tracking false, everything released, recovers"() {
     const { d, t } = fresh();
     run(d, t, {}, { hipX: C.hipX + 0.2 }, 300);
     t.now += FRAME;
@@ -301,6 +391,8 @@ const tests: Record<string, () => void> = {
   },
 };
 
-describe('gesture detector', () => {
-  for (const [name, fn] of Object.entries(tests)) it(name, fn);
+describe("gesture detector", () => {
+  for (const [name, fn] of Object.entries(tests)) {
+    it(name, fn);
+  }
 });

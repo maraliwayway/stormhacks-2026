@@ -1,9 +1,15 @@
-import { EMPTY_INPUT, type InputSource, type InputState } from '../types';
-import { createCalibrator, createLostBodyMonitor, type CalibrationStatus } from './calibration';
-import { createGestureDetector } from './gestureDetector';
-import { onFrame, startTracker, stopTracker } from './poseTracker';
+import { EMPTY_INPUT, type InputSource, type InputState } from "../types";
+import {
+  type CalibrationStatus,
+  createCalibrator,
+  createLostBodyMonitor,
+} from "./calibration";
+import { createGestureDetector } from "./gestureDetector";
+import { onFrame, startTracker, stopTracker } from "./poseTracker";
 
 export interface CvInput extends InputSource {
+  start(): Promise<void>;
+  stop(): void;
   /** Calibration progress, for drawing the "stand in the box" guide. */
   getCalibration(): CalibrationStatus | null;
   /** Non-null while recalibrating because the body was lost; show it instead of the default prompt. */
@@ -22,9 +28,9 @@ export interface CvInput extends InputSource {
 export function createCvInput(video: HTMLVideoElement): CvInput {
   const state: InputState = { ...EMPTY_INPUT };
   const calibrator = createCalibrator();
-  const lostMonitor = createLostBodyMonitor();
+  const lostBodyMonitor = createLostBodyMonitor();
   const detector = createGestureDetector();
-  let calStatus: CalibrationStatus | null = null;
+  let calibrationStatus: CalibrationStatus | null = null;
   let prompt: string | null = null;
   let unsubscribe: (() => void) | null = null;
 
@@ -33,55 +39,68 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
     calibrator.start();
   };
 
-  const onKey = (e: KeyboardEvent) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === 'c' || e.key === 'C') recalibrate();
+  const onCalibrationKey = (event: KeyboardEvent) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) {
+      return;
+    }
+    if (event.key === "c" || event.key === "C") {
+      recalibrate();
+    }
   };
 
   return {
     getState: () => state,
-    getCalibration: () => calStatus,
+    getCalibration: () => calibrationStatus,
     getPrompt: () => prompt,
     recalibrate,
 
     async start() {
       await startTracker(video);
-      unsubscribe = onFrame((snap) => {
-        calStatus = calibrator.update(snap.landmarks, snap.frameTs);
+      unsubscribe = onFrame((frame) => {
+        calibrationStatus = calibrator.update(frame.landmarks, frame.frameTs);
 
         // Body gone for 2 s after calibrating: ask to recalibrate.
-        if (lostMonitor.update(snap.landmarks !== null, snap.frameTs) && calStatus.phase === 'done') {
+        if (
+          lostBodyMonitor.update(frame.landmarks !== null, frame.frameTs) &&
+          calibrationStatus.phase === "done"
+        ) {
           calibrator.start();
-          prompt = 'Body lost - step back in the box';
+          prompt = "Body lost - step back in the box";
         }
-        if (calStatus.phase === 'done') prompt = null;
+        if (calibrationStatus.phase === "done") {
+          prompt = null;
+        }
 
-        const g = detector.update(snap.landmarks, snap.frameTs, calStatus.calibration ?? undefined);
-        state.tracking = g.tracking;
-        state.flapping = g.flapping;
-        state.flapVelocity = g.flapVelocity;
-        state.flapCount = g.flapCount;
-        state.flapRate = g.flapRate;
-        state.selectCount = g.waveCount; // a hand wave confirms menus (game reads selectCount)
-        state.strafe = g.strafe;
-        state.strafeLeft = g.strafeLeft;
-        state.strafeRight = g.strafeRight;
-        state.jump = g.jump;
-        state.squat = g.squat;
-        state.calibrated = calStatus.phase === 'done';
+        const gestures = detector.update(
+          frame.landmarks,
+          frame.frameTs,
+          calibrationStatus.calibration ?? undefined,
+        );
+        state.tracking = gestures.tracking;
+        state.flapping = gestures.flapping;
+        state.flapVelocity = gestures.flapVelocity;
+        state.flapCount = gestures.flapCount;
+        state.flapRate = gestures.flapRate;
+        state.selectCount = gestures.waveCount; // a hand wave confirms menus (game reads selectCount)
+        state.strafe = gestures.strafe;
+        state.strafeLeft = gestures.strafeLeft;
+        state.strafeRight = gestures.strafeRight;
+        state.jump = gestures.jump;
+        state.squat = gestures.squat;
+        state.calibrated = calibrationStatus.phase === "done";
       });
       calibrator.start();
-      window.addEventListener('keydown', onKey);
+      window.addEventListener("keydown", onCalibrationKey);
     },
 
     stop() {
       unsubscribe?.();
       unsubscribe = null;
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener("keydown", onCalibrationKey);
       stopTracker();
       detector.reset();
       Object.assign(state, EMPTY_INPUT);
-      calStatus = null;
+      calibrationStatus = null;
       prompt = null;
     },
   };

@@ -1,15 +1,18 @@
-import { expect, it, vi } from 'vitest';
-import { gameEvents } from './events';
+import { expect, it, vi } from "vitest";
+import { gameEvents } from "./events";
 
-it('keeps gameplay running if a voice listener throws and allows teardown', () => {
-  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-  const removeBroken = gameEvents.on('milestone', () => { throw new Error('voice offline'); });
+it("keeps gameplay running if a voice listener throws and allows teardown", () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const removeBroken = gameEvents.on("milestone", () => {
+    throw new Error("voice offline");
+  });
   const listener = vi.fn();
-  const remove = gameEvents.on('milestone', listener);
-  gameEvents.emit('milestone', { altitude: 25 });
+  const remove = gameEvents.on("milestone", listener);
+  gameEvents.emit("milestone", { altitude: 25 });
   expect(listener).toHaveBeenCalledOnce();
-  remove(); removeBroken();
-  gameEvents.emit('milestone', { altitude: 50 });
+  remove();
+  removeBroken();
+  gameEvents.emit("milestone", { altitude: 50 });
   expect(listener).toHaveBeenCalledOnce();
   warn.mockRestore();
 });

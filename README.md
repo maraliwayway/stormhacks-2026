@@ -14,6 +14,7 @@ npm run dev
 Open the local URL printed by Vite. The game uses a 1280 by 720 canvas that fits the browser while preserving its aspect ratio.
 
 ```sh
+npm run lint
 npm run typecheck
 npm test
 npm run build
@@ -45,26 +46,43 @@ Dev 1 can call `setDifficulty` in `src/game/difficulty.ts` with `enemyEveryMetre
 
 Camera controls register a brisk two-arm downstroke just below shoulder height after the arms have been raised. You do not need to finish the stroke at hip height. Wrist and body filters favour faster response, and a small torso tilt or sideways step selects one adjacent lane. Return upright to move again in the same direction. Holding a tilt keeps the selected lane. Opposite tilts move one lane back. Lane changes take about 170 ms and stop at the outer lanes. Keyboard arrows follow the same one-press, one-lane behaviour. Small movements, slow arm drops and single-arm motions remain filtered out. The camera requests up to 60 fps when supported. Actual camera performance depends on the laptop and lighting.
 
-Each flap now adds a 700 px/s upward impulse (previously 400), with upward speed capped at 1000 px/s (previously 600). One flap from rest lifts roughly 7.7 metres instead of 2.5. Faster flapping travels farther, while the slow 150 px/s fall remains the same. Horizontal movement snaps to the selected lane.
+Each flap adds a 700 px/s upward impulse, with upward speed capped at 1000 px/s. One flap from rest lifts roughly 7.7 metres. Faster flapping travels farther, while the bird falls at no more than 150 px/s. Horizontal movement stops at the selected lane.
 
 ## Optional worm pickups
 
-FA-25 is isolated on `feat/worm-pickups`. Copy `.env.example` to `.env.local`, set `VITE_ENABLE_WORMS=true`, and restart Vite to try it. Leave it off until the team's M3 core milestone passes. Worms appear beside hazards, play a short pickup sound, and save the total locally. The sound is an original generated tone that the designer can replace.
+Copy `.env.example` to `.env.local`, set `VITE_ENABLE_WORMS=true`, and restart Vite to try it. Leave it off until the team's M3 core milestone passes. Worms appear beside hazards, play a short pickup sound, and save the total locally. The sound is an original generated tone that the designer can replace.
 
-The bird, kitchen, hazards, and enemies use code-drawn placeholders. Final art, webcam tracking, voice playback, and the backend transport are separate team integration work.
+The bird, kitchen, hazards, and enemies use code-drawn placeholders. Webcam tracking is integrated. Final art, voice playback, and the backend transport remain team integration work.
 
 | Folder | Owner / purpose |
 | --- | --- |
 | `src/input` | Shared contract and input sources |
-| `src/cv` | Camera integration seam |
+| `src/input/cv` | Camera tracking, calibration, and gesture detection |
 | `src/game/scenes` | Phaser scenes, Dev 2 |
-| `src/audio` | Voice and sound, Dev 3 |
 | `src/net` | Backend connection, Dev 3 |
 | `public/assets` | Art and audio from the designer |
 
 ## Review workflow
 
-One branch and pull request per ticket. Use commit titles such as `feat(FA-1): scaffold the Phaser frontend`. Describe the behavior, validation, and dependencies in each PR. Merge through `dev` after team review.
+One branch and pull request per ticket. Use commit titles such as `feat(FA-1): scaffold the Phaser frontend`. Describe the behavior, validation, and dependencies in each PR. Confirm the integration target with the team before merging.
+
+## Code conventions
+
+The TypeScript style is adapted from AleaSat ground software's [Biome configuration](https://github.com/jumiknows/Aleasat-Mission-Software/blob/main/alea-gsw/biome.json) and [contributor guidance](https://github.com/jumiknows/Aleasat-Mission-Software/blob/main/alea-gsw/CONTRIBUTING.md). The pinned Biome version matches that reference. This Vite project uses extensionless imports, like AleaSat's frontend override, and also requires braces around control-flow blocks.
+
+Run `npm run lint:fix` before reviewing a change. `npm run lint` checks formatting, imports, naming, unused variables, and the configured correctness rules. CI runs those checks, unit tests, and the production build. Keep functions focused on one responsibility; use descriptive camelCase names, PascalCase types/classes, and CONSTANT_CASE configuration. Name time units explicitly, keep tuning values in their configuration modules, and explain non-obvious behavior rather than restating the code.
+
+| Module | Responsibility |
+| --- | --- |
+| `src/game/scenes/GameScene.ts` | Run lifecycle and ordered frame updates |
+| `src/game/rendering` | Bird, obstacles, cat, and background drawing |
+| `src/game/flight.ts` | Movement physics and lane selection |
+| `src/game/hazards.ts`, `enemies.ts`, `difficulty.ts` | Safe obstacle generation, cat encounters, and pacing |
+| `src/input/cv/gestureDetector.ts` | Pose smoothing and gesture coordination |
+| `src/input/cv/flapDetector.ts`, `waveDetector.ts`, `bodyGestureDetector.ts` | Independent gesture recognition |
+| `src/input/cv/gestureConfig.ts`, `gestureTypes.ts` | Gesture tuning, calibration, and typed pose/state contracts |
+
+Keep `InputState`, the gesture factory exports, game event payloads, and the difficulty/score integration contracts compatible with other developers' code. Hazard advancement takes named options such as `{ birdY, suppressObstacles }` so the caller's intent is visible. A cleanup should preserve seeded obstacle order, gesture counts across tracking loss, collision timing, and map-loop progress. Run the browser smoke test for changes to those paths; it can exercise optional pickups with `VITE_ENABLE_WORMS=true npm run test:browser`.
 
 ## Storyboard flow
 

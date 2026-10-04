@@ -1,34 +1,52 @@
-import { L } from './landmarks';
-import type { Calibration } from './gestureDetector';
+import type { Calibration } from "./gestureDetector";
+import { L } from "./landmarks";
 
-export interface CalPoint { x: number; y: number; visibility?: number }
+export interface CalPoint {
+  x: number;
+  y: number;
+  visibility?: number;
+}
 
 export const CAL = {
-  captureMs: 2000, //      baseline length; with the time to step into the box, total stays under ~5 s
-  lostPromptMs: 2000, //   body missing this long after calibration => ask to recalibrate
-  edgeMargin: 0.02, //     landmarks closer than this to the image edge count as cut off
+  captureMs: 2000, // baseline length; with the time to step into the box, total stays under ~5 seconds
+  lostPromptMs: 2000, // body missing this long after calibration => ask to recalibrate
+  edgeMargin: 0.02, // landmarks closer than this to the image edge count as cut off
   minVisibility: 0.5,
-  maxSpread: 0.4, //       hips may wander at most this many shoulder widths during capture
+  maxSpread: 0.4, // hips may wander at most this many shoulder widths during capture
   minShoulderWidth: 0.05,
 };
 
 /** Landmarks that must be visible and inside the frame for "full body in frame". */
 const REQUIRED = [
-  L.SHOULDER_L, L.SHOULDER_R, L.HIP_L, L.HIP_R,
-  L.KNEE_L, L.KNEE_R, L.ANKLE_L, L.ANKLE_R,
+  L.SHOULDER_L,
+  L.SHOULDER_R,
+  L.HIP_L,
+  L.HIP_R,
+  L.KNEE_L,
+  L.KNEE_R,
+  L.ANKLE_L,
+  L.ANKLE_R,
 ];
 
-export function bodyInFrame(lm: ArrayLike<CalPoint> | null): boolean {
-  if (!lm || lm.length < 29) return false;
-  const lo = CAL.edgeMargin;
-  const hi = 1 - CAL.edgeMargin;
-  return REQUIRED.every((i) => {
-    const p = lm[i];
-    return (p.visibility ?? 1) >= CAL.minVisibility && p.x > lo && p.x < hi && p.y > lo && p.y < hi;
+export function bodyInFrame(landmarks: ArrayLike<CalPoint> | null): boolean {
+  if (!landmarks || landmarks.length < 29) {
+    return false;
+  }
+  const lowerBound = CAL.edgeMargin;
+  const upperBound = 1 - CAL.edgeMargin;
+  return REQUIRED.every((index) => {
+    const point = landmarks[index];
+    return (
+      (point.visibility ?? 1) >= CAL.minVisibility &&
+      point.x > lowerBound &&
+      point.x < upperBound &&
+      point.y > lowerBound &&
+      point.y < upperBound
+    );
   });
 }
 
-export type CalibrationPhase = 'idle' | 'waiting' | 'capturing' | 'done';
+export type CalibrationPhase = "idle" | "waiting" | "capturing" | "done";
 
 export interface CalibrationStatus {
   phase: CalibrationPhase;
@@ -39,82 +57,115 @@ export interface CalibrationStatus {
   calibration: Calibration | null;
 }
 
-interface Sample { sw: number; hipX: number; hipY: number; shoulderY: number; shoulderX: number }
+interface Sample {
+  shoulderWidth: number;
+  hipX: number;
+  hipY: number;
+  shoulderY: number;
+  shoulderX: number;
+}
 
-const median = (a: number[]) => {
-  const s = [...a].sort((x, y) => x - y);
-  const m = s.length >> 1;
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-};
-const spread = (a: number[]) => Math.max(...a) - Math.min(...a);
+function median(values: number[]): number {
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = sorted.length >> 1;
+  return sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function spread(values: number[]): number {
+  return Math.max(...values) - Math.min(...values);
+}
 
 export function createCalibrator() {
-  let phase: CalibrationPhase = 'idle';
-  let startTs = 0;
+  let phase: CalibrationPhase = "idle";
+  let captureStartedMs = 0;
   let samples: Sample[] = [];
   let calibration: Calibration | null = null;
 
-  const status = (inFrame: boolean, ts: number): CalibrationStatus => ({
-    phase,
-    progress: phase === 'capturing' ? Math.min(1, (ts - startTs) / CAL.captureMs) : phase === 'done' ? 1 : 0,
-    bodyInFrame: inFrame,
-    calibration,
-  });
+  function status(inFrame: boolean, timestampMs: number): CalibrationStatus {
+    let progress = 0;
+    if (phase === "capturing") {
+      progress = Math.min(1, (timestampMs - captureStartedMs) / CAL.captureMs);
+    } else if (phase === "done") {
+      progress = 1;
+    }
+    return { phase, progress, bodyInFrame: inFrame, calibration };
+  }
 
   /** Begin (or restart) calibration. The old baseline stays valid until a new one completes. */
-  function start() {
-    phase = 'waiting';
+  function start(): void {
+    phase = "waiting";
     samples = [];
   }
 
-  function update(lm: ArrayLike<CalPoint> | null, ts: number): CalibrationStatus {
-    const inFrame = bodyInFrame(lm);
-    if (phase === 'idle' || phase === 'done' || !lm) {
-      if (phase === 'capturing') { phase = 'waiting'; samples = []; }
-      return status(inFrame, ts);
+  function update(
+    landmarks: ArrayLike<CalPoint> | null,
+    timestampMs: number,
+  ): CalibrationStatus {
+    const inFrame = bodyInFrame(landmarks);
+    if (phase === "idle" || phase === "done" || !landmarks) {
+      if (phase === "capturing") {
+        phase = "waiting";
+        samples = [];
+      }
+      return status(inFrame, timestampMs);
     }
 
     if (!inFrame) {
-      phase = 'waiting';
+      phase = "waiting";
       samples = [];
-      return status(false, ts);
+      return status(false, timestampMs);
     }
 
-    if (phase === 'waiting') {
-      phase = 'capturing';
-      startTs = ts;
+    if (phase === "waiting") {
+      phase = "capturing";
+      captureStartedMs = timestampMs;
       samples = [];
     }
 
     samples.push({
-      sw: Math.abs(lm[L.SHOULDER_L].x - lm[L.SHOULDER_R].x),
-      hipX: (lm[L.HIP_L].x + lm[L.HIP_R].x) / 2,
-      hipY: (lm[L.HIP_L].y + lm[L.HIP_R].y) / 2,
-      shoulderY: (lm[L.SHOULDER_L].y + lm[L.SHOULDER_R].y) / 2,
-      shoulderX: (lm[L.SHOULDER_L].x + lm[L.SHOULDER_R].x) / 2,
+      shoulderWidth: Math.abs(
+        landmarks[L.SHOULDER_L].x - landmarks[L.SHOULDER_R].x,
+      ),
+      hipX: (landmarks[L.HIP_L].x + landmarks[L.HIP_R].x) / 2,
+      hipY: (landmarks[L.HIP_L].y + landmarks[L.HIP_R].y) / 2,
+      shoulderY: (landmarks[L.SHOULDER_L].y + landmarks[L.SHOULDER_R].y) / 2,
+      shoulderX: (landmarks[L.SHOULDER_L].x + landmarks[L.SHOULDER_R].x) / 2,
     });
 
-    if (ts - startTs >= CAL.captureMs) {
-      const sw = median(samples.map((s) => s.sw));
-      const moved = Math.max(spread(samples.map((s) => s.hipX)), spread(samples.map((s) => s.hipY))) / sw;
-      if (sw < CAL.minShoulderWidth || moved > CAL.maxSpread) {
-        // Player was still walking into position (or too far away): try again.
-        phase = 'capturing';
-        startTs = ts;
-        samples = [];
-      } else {
-        calibration = {
-          shoulderWidth: sw,
-          hipX: median(samples.map((s) => s.hipX)),
-          hipY: median(samples.map((s) => s.hipY)),
-          shoulderY: median(samples.map((s) => s.shoulderY)),
-          shoulderX: median(samples.map((s) => s.shoulderX)),
-        };
-        phase = 'done';
-        samples = [];
-      }
+    if (timestampMs - captureStartedMs >= CAL.captureMs) {
+      completeCapture(timestampMs);
     }
-    return status(true, ts);
+    return status(true, timestampMs);
+  }
+
+  function completeCapture(timestampMs: number): void {
+    const shoulderWidth = median(samples.map((sample) => sample.shoulderWidth));
+    const movementSpread =
+      Math.max(
+        spread(samples.map((sample) => sample.hipX)),
+        spread(samples.map((sample) => sample.hipY)),
+      ) / shoulderWidth;
+    if (
+      shoulderWidth < CAL.minShoulderWidth ||
+      movementSpread > CAL.maxSpread
+    ) {
+      // Player was still walking into position (or too far away): try again.
+      phase = "capturing";
+      captureStartedMs = timestampMs;
+      samples = [];
+    } else {
+      calibration = {
+        shoulderWidth,
+        hipX: median(samples.map((sample) => sample.hipX)),
+        hipY: median(samples.map((sample) => sample.hipY)),
+        shoulderY: median(samples.map((sample) => sample.shoulderY)),
+        shoulderX: median(samples.map((sample) => sample.shoulderX)),
+      };
+      phase = "done";
+      samples = [];
+    }
   }
 
   return { start, update };
@@ -124,10 +175,15 @@ export function createCalibrator() {
 export function createLostBodyMonitor() {
   let lostSince: number | null = null;
   return {
-    update(tracking: boolean, ts: number): boolean {
-      if (tracking) { lostSince = null; return false; }
-      if (lostSince === null) lostSince = ts;
-      return ts - lostSince >= CAL.lostPromptMs;
+    update(tracking: boolean, timestampMs: number): boolean {
+      if (tracking) {
+        lostSince = null;
+        return false;
+      }
+      if (lostSince === null) {
+        lostSince = timestampMs;
+      }
+      return timestampMs - lostSince >= CAL.lostPromptMs;
     },
   };
 }
