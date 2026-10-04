@@ -10,6 +10,7 @@ import { installVfx } from '../vfx';
 import { WormField, wormBalance } from '../worms';
 import { MenuConfirm } from '../menuConfirm';
 import { levelAt, hasWon } from '../levels';
+import { cameraPanel } from '../../input/cv/cameraPanel';
 
 const WORMS_ENABLED = import.meta.env.VITE_ENABLE_WORMS === 'true';
 
@@ -49,6 +50,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    cameraPanel.setMode('mini');
     this.phase = 'playing';
     this.started = this.time.now;
     this.lastMilestone = 0;
@@ -90,7 +92,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '20px', color: '#173e47', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(30);
     gameEvents.emit('level_start', { level: this.level.id, altitude: 0 });
-    this.bestHud = this.add.text(1248, 32, `BEST ${Math.floor(this.previousBest)} m`, {
+    this.bestHud = this.add.text(1248, 172, `BEST ${Math.floor(this.previousBest)} m`, {
       fontSize: '24px', color: '#173e47', fontStyle: 'bold',
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(30);
     if (this.previousBest > 0) {
@@ -105,7 +107,7 @@ export class GameScene extends Phaser.Scene {
     this.wormHud = this.add.text(30, 60, `WORMS ${wormBalance.get()}`, {
       fontSize: '20px', color: '#173e47',
     }).setScrollFactor(0).setDepth(30).setVisible(WORMS_ENABLED);
-    this.hint = this.add.text(640, 680, 'Tap Space to flap   •   Left / right to change lane', {
+    this.hint = this.add.text(640, 680, 'Tap Space to flap   •   Left / right to glide', {
       fontSize: '20px', color: '#173e47', backgroundColor: '#fff1d5', padding: { x: 16, y: 8 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(30);
     installVfx(this, this.bird, this.score, () => { this.slowUntil = this.time.now + 200; });
@@ -144,8 +146,8 @@ export class GameScene extends Phaser.Scene {
     this.hint.setText(!input.tracking || !input.calibrated
       ? 'Tracking paused. Return to the camera or use keyboard mode.'
       : input === keyboard.getState()
-        ? 'Tap Space to flap   •   Left / right to change lane'
-        : 'Flap both arms to rise   •   Lean left / right to change lane');
+        ? 'Tap Space to flap   •   Left / right to glide'
+        : 'Flap both arms to rise   •   Lean left / right to glide');
     const nextLevel = levelAt(this.flight.altitude);
     if (nextLevel.id !== this.level.id) {
       this.level = nextLevel;
@@ -206,11 +208,15 @@ export class GameScene extends Phaser.Scene {
     this.overBaseline = inputManager.getState().flapCount;
     this.confirm = new MenuConfirm(inputManager.getState());
     this.add.rectangle(640, 360, 1280, 720, 0x183e46, 0.5).setScrollFactor(0).setDepth(39);
-    this.add.text(640, 320, `LEGENDARY FLOP\n${Math.floor(this.flight.altitude)} metres\n\nFlap to try again\nJump or Enter for main menu`, {
+    this.add.text(640, 320, `LEGENDARY FLOP\n${Math.floor(this.flight.altitude)} metres\n\nFlap to try again\n${this.confirmHint()} for main menu`, {
       fontSize: '36px', color: '#fff4dc', backgroundColor: '#183e46',
       align: 'center', padding: { x: 40, y: 30 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(40);
     this.menuButton();
+  }
+
+  private confirmHint(): string {
+    return inputManager.getState() === keyboard.getState() ? 'Jump or Enter' : 'Swipe your right arm';
   }
 
   private menuButton(): void {
@@ -228,7 +234,7 @@ export class GameScene extends Phaser.Scene {
     gameEvents.emit('win', { altitude: this.flight.altitude, duration });
     gameEvents.emit('run_end', { altitude: this.flight.altitude, duration });
     this.add.rectangle(640, 360, 1280, 720, 0x183e46, 0.85).setScrollFactor(0).setDepth(39);
-    this.add.text(640, 300, 'BIRD HEAVEN\nYou made it!\n\nJump or Enter for main menu', {
+    this.add.text(640, 300, `BIRD HEAVEN\nYou made it!\n\n${this.confirmHint()} for main menu`, {
       fontSize: '42px', color: '#fff4dc', align: 'center',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(40);
     this.menuButton();

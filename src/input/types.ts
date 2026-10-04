@@ -24,7 +24,15 @@ export interface InputState {
     /** Flaps per second over a rolling 3 s window. Used by difficulty + voice. */
     flapRate: number;
   
-    /** True while hip midpoint is left of calibrated center. */
+    /**
+     * Analog strafe, -1 (fully left) .. 0 (centre) .. +1 (fully right).
+     * Proportional to how far the hip midpoint is from calibrated centre, with a small
+     * deadzone. Use this for movement: velocityX = strafe * maxSpeed.
+     * Keyboard: -1 / 0 / +1.
+     */
+    strafe: number;
+
+    /** Boolean strafeLeft/Right are for menus (discrete navigation). True while hip midpoint is left of calibrated center. */
     strafeLeft: boolean;
   
     /** True while hip midpoint is right of calibrated center. */
@@ -59,6 +67,7 @@ export interface InputState {
     flapVelocity: 0,
     flapCount: 0,
     flapRate: 0,
+    strafe: 0,
     strafeLeft: false,
     strafeRight: false,
     jump: false,

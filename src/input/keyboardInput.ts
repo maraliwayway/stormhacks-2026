@@ -56,6 +56,7 @@ export class KeyboardInput implements InputSource {
     this.state.flapVelocity = this.state.flapping ? 1 : 0;
     this.state.strafeLeft = this.keys.has('ArrowLeft');
     this.state.strafeRight = this.keys.has('ArrowRight');
+    this.state.strafe = Number(this.state.strafeRight) - Number(this.state.strafeLeft);
     this.state.jump = this.keys.has('ArrowUp');
     this.state.squat = this.keys.has('ArrowDown');
     this.state.select = this.keys.has('Enter');

@@ -12,9 +12,11 @@
     "test:browser": "node scripts/browser-smoke.mjs"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1",
     "phaser": "3.90.0"
   },
   "devDependencies": {
+    "@types/node": "^26.6.4",
     "playwright": "1.62.1",
     "typescript": "7.0.2",
     "vite": "8.3.2",

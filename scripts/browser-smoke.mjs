@@ -104,7 +104,7 @@ try {
     await page.waitForFunction(before => window.testGame.scene.getScene('Game').wormHud.text !== before, previous);
     assert.equal(await page.evaluate(() => localStorage.getItem('flappy-arms.worms')), '1');
   }
-  await page.evaluate(() => { window.testInput.strafeLeft = true; });
+  await page.evaluate(() => { window.testInput.strafe = -1; });
   await page.waitForFunction(() => {
     const game = window.testGame;
     return game.scene.getScene('Game').flight.lane === 0;
