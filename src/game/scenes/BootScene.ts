@@ -67,7 +67,7 @@ export class BootScene extends Phaser.Scene {
     this.title.setText("HOW TO FLY").setFontSize(60);
     this.copy.setText(
       this.cameraMode()
-        ? "Flap both arms to rise. The faster you flap, the higher you go.\nStop flapping and you sink slowly.\nTilt left or right to shift one lane.\nReturn upright before tilting again.\n\nLower your hand, then wave again to confirm."
+        ? "Flap both arms to rise; stop flapping to sink slowly.\nLean or swipe left/right to change one lane.\nReturn upright before another tilt.\nSwipes: one hand near shoulder height.\nKeep your other hand down.\nMenus: swipe left to right."
         : "Flap both arms to rise.\nTilt to shift one lane, then return upright.\nJump to confirm. Squat is the down pose.\n\nKeyboard: Space to flap, tap left/right to shift lanes.",
     );
     this.button.setText(this.buttonText("GOT IT!"));
@@ -82,7 +82,7 @@ export class BootScene extends Phaser.Scene {
       return `${label}\nJump or press Enter`;
     }
     return inputManager.getState().calibrated
-      ? `${label}\nWave one raised hand`
+      ? `${label}\nSwipe one hand left to right`
       : "Stand in the box\nto calibrate";
   }
 

@@ -5,7 +5,7 @@ import {
   createLostBodyMonitor,
 } from "./calibration";
 import { createGestureDetector } from "./gestureDetector";
-import { onFrame, startTracker, stopTracker } from "./poseTracker";
+import { getLatest, onFrame, startTracker, stopTracker } from "./poseTracker";
 
 export interface CvInput extends InputSource {
   start(): Promise<void>;
@@ -26,7 +26,7 @@ export interface CvInput extends InputSource {
  * so the game can pause / show the calibrate screen whenever it goes false.
  */
 export function createCvInput(video: HTMLVideoElement): CvInput {
-  const state: InputState = { ...EMPTY_INPUT };
+  const state: InputState = { ...EMPTY_INPUT, menuConfirmMode: "swipe" };
   const calibrator = createCalibrator();
   const lostBodyMonitor = createLostBodyMonitor();
   const detector = createGestureDetector();
@@ -36,6 +36,8 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
 
   const recalibrate = () => {
     prompt = null;
+    state.calibrated = false;
+    detector.reset();
     calibrator.start();
   };
 
@@ -49,9 +51,13 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
   };
 
   return {
-    getState: () => state,
+    getState: () => {
+      // Expire the last pose before the next game tick, even after a stalled tab.
+      getLatest();
+      return state;
+    },
     getCalibration: () => calibrationStatus,
-    getPrompt: () => prompt,
+    getPrompt: () => getLatest().error ?? prompt,
     recalibrate,
 
     async start() {
@@ -61,7 +67,7 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
 
         // Body gone for 2 s after calibrating: ask to recalibrate.
         if (
-          lostBodyMonitor.update(frame.landmarks !== null, frame.frameTs) &&
+          lostBodyMonitor.update(frame.landmarks !== null, performance.now()) &&
           calibrationStatus.phase === "done"
         ) {
           calibrator.start();
@@ -81,7 +87,11 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
         state.flapVelocity = gestures.flapVelocity;
         state.flapCount = gestures.flapCount;
         state.flapRate = gestures.flapRate;
-        state.selectCount = gestures.waveCount; // a hand wave confirms menus (game reads selectCount)
+        state.selectCount = gestures.swipeRightCount;
+        state.swipeLeftCount = gestures.swipeLeftCount;
+        state.swipeRightCount = gestures.swipeRightCount;
+        state.lastSwipeDirection = gestures.lastSwipeDirection;
+        state.swipeInProgress = gestures.swipeInProgress;
         state.strafe = gestures.strafe;
         state.strafeLeft = gestures.strafeLeft;
         state.strafeRight = gestures.strafeRight;

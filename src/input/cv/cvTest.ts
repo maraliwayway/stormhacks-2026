@@ -24,13 +24,14 @@ function begin() {
     const formatNumber = (value: number) => value.toFixed(2);
     output.textContent = [
       cv
-        ? `fps ${camera.fps.toFixed(1)} | inference ${camera.inferenceMs.toFixed(1)} ms`
+        ? `fps ${camera.fps.toFixed(1)} | inference ${camera.inferenceMs.toFixed(1)} ms | ${camera.delegate ?? "loading"}`
         : "keyboard source",
+      `pose latency ${camera.latencyMs.toFixed(1)} ms | skipped busy frames ${camera.droppedFrames}`,
       `tracking ${state.tracking} | calibrated ${state.calibrated}`,
       `flapCount ${state.flapCount} | flapRate ${formatNumber(state.flapRate)}/s | flapping ${state.flapping} | flapVelocity ${formatNumber(state.flapVelocity)}`,
       `strafe ${formatNumber(state.strafe)} | left ${state.strafeLeft} | right ${state.strafeRight}`,
       `jump ${state.jump} | squat ${state.squat}`,
-      `waves (selectCount) ${state.selectCount ?? 0}`,
+      `swipes left ${state.swipeLeftCount ?? 0} | right / confirm ${state.selectCount ?? 0}`,
     ].join("\n");
   }, 100);
 }

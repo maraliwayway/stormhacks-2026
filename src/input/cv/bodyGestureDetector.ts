@@ -40,8 +40,13 @@ export class BodyGestureDetector {
       (calibration.shoulderX ?? calibration.hipX) - calibration.hipX;
     const torsoTilt =
       (pose.shoulderX - pose.hipX - neutralTilt) / shoulderWidth;
+    const shoulderRoll =
+      (pose.shoulderRightY - pose.shoulderLeftY) / shoulderWidth -
+      (calibration.shoulderRoll ?? 0);
+    const torsoOffset =
+      Math.abs(torsoTilt) >= Math.abs(shoulderRoll) ? torsoTilt : -shoulderRoll;
     const steeringOffset =
-      Math.abs(hipOffset) >= Math.abs(torsoTilt) ? hipOffset : torsoTilt;
+      Math.abs(hipOffset) >= Math.abs(torsoOffset) ? hipOffset : torsoOffset;
     const rise = (calibration.hipY - pose.hipY) / shoulderWidth;
     const upSpeed =
       this.previousHipY === null

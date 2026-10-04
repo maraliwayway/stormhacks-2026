@@ -63,6 +63,7 @@ interface Sample {
   hipY: number;
   shoulderY: number;
   shoulderX: number;
+  shoulderRoll: number;
 }
 
 function median(values: number[]): number {
@@ -132,6 +133,12 @@ export function createCalibrator() {
       hipY: (landmarks[L.HIP_L].y + landmarks[L.HIP_R].y) / 2,
       shoulderY: (landmarks[L.SHOULDER_L].y + landmarks[L.SHOULDER_R].y) / 2,
       shoulderX: (landmarks[L.SHOULDER_L].x + landmarks[L.SHOULDER_R].x) / 2,
+      shoulderRoll:
+        (landmarks[L.SHOULDER_R].y - landmarks[L.SHOULDER_L].y) /
+        Math.max(
+          CAL.minShoulderWidth,
+          Math.abs(landmarks[L.SHOULDER_L].x - landmarks[L.SHOULDER_R].x),
+        ),
     });
 
     if (timestampMs - captureStartedMs >= CAL.captureMs) {
@@ -162,6 +169,7 @@ export function createCalibrator() {
         hipY: median(samples.map((sample) => sample.hipY)),
         shoulderY: median(samples.map((sample) => sample.shoulderY)),
         shoulderX: median(samples.map((sample) => sample.shoulderX)),
+        shoulderRoll: median(samples.map((sample) => sample.shoulderRoll)),
       };
       phase = "done";
       samples = [];

@@ -53,14 +53,15 @@ try {
     const { L } = await import("/src/input/cv/landmarks.ts");
     const detector = createGestureDetector();
     let ts = 1000;
-    window.waveInput = {
+    window.swipeInput = {
       ...window.testEmpty,
       tracking: true,
       calibrated: true,
+      menuConfirmMode: "swipe",
       selectCount: 0,
     };
-    window.testManager.setSource({ getState: () => window.waveInput });
-    window.waveFrames = (x, y = 0.25, frames = 6) => {
+    window.testManager.setSource({ getState: () => window.swipeInput });
+    window.swipeFrames = (x, y = cal.shoulderY, frames = 3) => {
       for (let i = 0; i < frames; i++) {
         const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.6 }));
         lm[L.SHOULDER_L] = { x: 0.375, y: cal.shoulderY };
@@ -71,39 +72,83 @@ try {
         lm[L.WRIST_R] = { x, y };
         ts += 33;
         const g = detector.update(lm, ts, cal);
-        window.waveInput = {
+        window.swipeInput = {
           ...window.testEmpty,
           ...g,
+          menuConfirmMode: "swipe",
           calibrated: true,
-          selectCount: g.waveCount,
+          selectCount: g.swipeRightCount,
         };
       }
     };
-    window.waveFrames(0.35, 0.6);
-    window.waveFrames(0.35);
-    window.waveFrames(0.45);
-    window.waveFrames(0.35);
+    window.swipeFrames(0.65, 0.6);
+    for (const x of [0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35]) {
+      window.swipeFrames(x);
+    }
   });
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Boot").stage === "controls",
   );
   await page.evaluate(() => {
-    window.waveFrames(0.45);
-    window.waveFrames(0.35);
+    window.swipeFrames(0.35, 0.35, 20);
+    // Returning in the wrong direction must not select the next menu.
+    for (const x of [0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65]) {
+      window.swipeFrames(x);
+    }
+    window.swipeInput.jump = true;
+    window.swipeInput.select = true;
   });
   await page.waitForTimeout(100);
   assert.equal(
     await page.evaluate(() => window.testGame.scene.isActive("Game")),
     false,
-    "continued waving cannot skip the controls",
+    "held hands, leftward swipes and jumping cannot skip the controls",
   );
   await page.evaluate(() => {
-    window.waveFrames(0.35, 0.6);
-    window.waveFrames(0.35);
-    window.waveFrames(0.45);
-    window.waveFrames(0.35);
+    window.swipeFrames(0.65, 0.35, 20);
+    for (const x of [0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35]) {
+      window.swipeFrames(x);
+    }
   });
   await page.waitForFunction(() => window.testGame.scene.isActive("Game"));
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
+    640,
+    "the menu swipe cannot move the starting lane",
+  );
+  await page.evaluate(() => {
+    window.swipeFrames(0.35, 0.35, 20);
+    for (const x of [0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65]) {
+      window.swipeFrames(x);
+    }
+  });
+  await page.waitForFunction(
+    () => window.testGame.scene.getScene("Game").flight.x === 340,
+  );
+  await page.evaluate(() => {
+    window.swipeFrames(0.65, 0.35, 20);
+    for (const x of [0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35]) {
+      window.swipeFrames(x);
+    }
+  });
+  await page.waitForFunction(
+    () => window.testGame.scene.getScene("Game").flight.x === 640,
+  );
+  await page.evaluate(() => {
+    window.testGame.scene.getScene("Game").showGameOver();
+    window.swipeInput.flapCount++;
+    window.swipeInput.jump = true;
+  });
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").phase),
+    "over",
+    "camera flaps and jumps cannot select a game-over action",
+  );
+  await page.evaluate(() => {
+    window.swipeInput.selectCount++;
+  });
+  await page.waitForFunction(() => window.testGame.scene.isActive("Boot"));
   await page.evaluate(async () => {
     const { keyboard } = await import("/src/input/defaultInput.ts");
     window.testManager.setSource(keyboard);
@@ -568,7 +613,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: raised-hand wave menus, fresh wave after lowering, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
+    "Browser checks passed: rightward-swipe-only menus, no held repeat, wrong-direction and jump rejection, directional swipe lanes, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
   );
 } finally {
   await browser?.close();

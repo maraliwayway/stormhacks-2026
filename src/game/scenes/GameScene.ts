@@ -92,7 +92,7 @@ export class GameScene extends Phaser.Scene {
     this.worms = new WormField();
     this.wormArt = this.add.graphics().setDepth(8);
     const input = inputManager.getState();
-    this.flight = new Flight(input.flapCount);
+    this.flight = new Flight(input.flapCount, input);
     this.flight.velocity = -FLIGHT.impulse;
     this.cameras.main.setBackgroundColor("#f5dfb5");
     this.cameras.main.setScroll(0, 0);
@@ -227,6 +227,9 @@ export class GameScene extends Phaser.Scene {
       this.scene.start("Boot");
       return;
     }
+    if (input.menuConfirmMode === "swipe") {
+      return;
+    }
     if (input.flapCount < this.overBaseline) {
       this.overBaseline = input.flapCount;
     }
@@ -293,7 +296,7 @@ export class GameScene extends Phaser.Scene {
       );
     } else {
       this.hint.setText(
-        "Flap both arms to rise   •   Tilt to change lane, then return upright",
+        "Flap to rise   •   Lean or swipe left/right to change lane",
       );
     }
   }
@@ -421,6 +424,10 @@ export class GameScene extends Phaser.Scene {
     this.phase = "over";
     this.overBaseline = inputManager.getState().flapCount;
     this.confirm = new MenuConfirm(inputManager.getState());
+    const retryHint =
+      inputManager.getState().menuConfirmMode === "swipe"
+        ? ""
+        : "Flap to try again\n";
     this.add
       .rectangle(640, 360, 1280, 720, 0x183e46, 0.5)
       .setScrollFactor(0)
@@ -429,7 +436,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         640,
         320,
-        `LEGENDARY FLOP\n${Math.floor(this.flight.altitude)} metres\n\nFlap to try again\n${this.confirmHint()} for main menu`,
+        `LEGENDARY FLOP\n${Math.floor(this.flight.altitude)} metres\n\n${retryHint}${this.confirmHint()} for main menu`,
         {
           fontSize: "36px",
           color: "#fff4dc",
@@ -447,7 +454,7 @@ export class GameScene extends Phaser.Scene {
   private confirmHint(): string {
     return inputManager.getState() === keyboard.getState()
       ? "Jump or Enter"
-      : "Wave one raised hand";
+      : "Swipe one hand left to right";
   }
 
   private menuButton(): void {

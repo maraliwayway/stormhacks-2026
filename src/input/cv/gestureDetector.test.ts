@@ -261,7 +261,7 @@ const tests: Record<string, () => void> = {
       { hipX: C.hipX - sw * 0.25 },
       600,
     );
-    assert.ok(s.strafe > 0.1 && s.strafe < 0.5, `slight right ${s.strafe}`);
+    assert.ok(s.strafe > 0.3 && s.strafe < 0.8, `slight right ${s.strafe}`);
     assert.equal(s.strafeRight, false, "boolean not on yet");
     s = run(
       d,
@@ -280,80 +280,64 @@ const tests: Record<string, () => void> = {
     );
     assert.equal(s.strafe, -1, "left is negative");
   },
-  "a small wave with either raised hand confirms once and must be lowered before another confirmation"() {
+  "one horizontal swipe with either hand counts once in its preview direction"() {
     for (const side of [L.WRIST_L, L.WRIST_R]) {
       for (const direction of [-1, 1]) {
         const { d, t } = fresh();
-        const baseX = side === L.WRIST_L ? 0.65 : 0.35;
-        const feed = (x: number, y = 0.25, frames = 5) => {
-          let state!: ReturnType<typeof d.update>;
-          for (let i = 0; i < frames; i++) {
-            const lm = pose();
-            lm[side] = { x, y };
-            t.now += FRAME;
-            state = d.update(lm, t.now, C);
-          }
-          return state;
-        };
-        feed(baseX);
-        feed(baseX + direction * 0.1);
-        let s = feed(baseX);
-        assert.equal(s.waveCount, 1, `side ${side}, direction ${direction}`);
-        assert.equal(s.flapCount, 0);
-        // Continued waving with the hand raised cannot skip the controls screen.
-        feed(baseX + direction * 0.1);
-        s = feed(baseX);
-        assert.equal(s.waveCount, 1);
-        feed(baseX, 0.6);
-        feed(baseX);
-        feed(baseX + direction * 0.1);
-        s = feed(baseX);
-        assert.equal(s.waveCount, 2);
+        let state!: ReturnType<typeof d.update>;
+        for (let i = 0; i <= 12; i++) {
+          const lm = pose();
+          lm[side] = {
+            x: 0.5 + direction * (0.15 - i * 0.025),
+            y: C.shoulderY,
+          };
+          t.now += FRAME;
+          state = d.update(lm, t.now, C);
+        }
+        assert.equal(state.swipeRightCount, direction === 1 ? 1 : 0);
+        assert.equal(state.swipeLeftCount, direction === -1 ? 1 : 0);
+        assert.equal(state.flapCount, 0);
+        for (let i = 0; i < 60; i++) {
+          const lm = pose();
+          lm[side] = { x: 0.5 - direction * 0.15, y: C.shoulderY };
+          t.now += FRAME;
+          state = d.update(lm, t.now, C);
+        }
+        assert.equal(
+          state.swipeRightCount + state.swipeLeftCount,
+          1,
+          "holding the endpoint cannot repeat",
+        );
       }
     }
   },
-  "one sweep, a stationary raised hand, jitter and flapping cannot confirm"() {
+  "small waves, stationary hands, jitter and flapping cannot confirm"() {
     const { d, t } = fresh();
-    const feed = (x: number, frames = 15) => {
-      let s!: ReturnType<typeof d.update>;
-      for (let i = 0; i < frames; i++) {
-        const lm = pose();
-        lm[L.WRIST_R] = { x: x + Math.sin(i) * 0.005, y: 0.25 };
-        t.now += FRAME;
-        s = d.update(lm, t.now, C);
-      }
-      return s;
-    };
-    assert.equal(feed(0.35).waveCount, 0);
-    assert.equal(
-      feed(0.5).waveCount,
-      0,
-      "one sweep is not a back-and-forth wave",
-    );
-    assert.equal(
-      feed(0.5, 60).waveCount,
-      0,
-      "holding and jitter do not confirm",
-    );
+    for (let i = 0; i < 90; i++) {
+      const lm = pose();
+      lm[L.WRIST_R] = { x: 0.62 + Math.sin(i / 4) * 0.04, y: C.shoulderY };
+      t.now += FRAME;
+      assert.equal(d.update(lm, t.now, C).swipeRightCount, 0);
+    }
     const flapper = fresh();
     for (let i = 0; i < 3; i++) {
-      assert.equal(flap(flapper.d, flapper.t, 200).waveCount, 0);
+      assert.equal(flap(flapper.d, flapper.t, 200).swipeRightCount, 0);
     }
   },
-  "tracking loss clears an unfinished wave without replaying it on return"() {
+  "tracking loss clears an unfinished swipe without replaying it on return"() {
     const { d, t } = fresh();
-    for (const x of [0.35, 0.35, 0.35, 0.5, 0.5, 0.5]) {
+    for (const x of [0.65, 0.65, 0.65, 0.6, 0.55, 0.5]) {
       const lm = pose();
-      lm[L.WRIST_R] = { x, y: 0.25 };
+      lm[L.WRIST_R] = { x, y: C.shoulderY };
       t.now += FRAME;
-      assert.equal(d.update(lm, t.now, C).waveCount, 0);
+      assert.equal(d.update(lm, t.now, C).swipeRightCount, 0);
     }
     t.now += FRAME;
     d.update(null, t.now, C);
     const lm = pose();
-    lm[L.WRIST_R] = { x: 0.35, y: 0.25 };
+    lm[L.WRIST_R] = { x: 0.35, y: C.shoulderY };
     t.now += FRAME;
-    assert.equal(d.update(lm, t.now, C).waveCount, 0);
+    assert.equal(d.update(lm, t.now, C).swipeRightCount, 0);
   },
   "strafe right"() {
     const { d, t } = fresh();
