@@ -1,0 +1,44 @@
+[
+  {
+    "id": "announcer_start_1",
+    "persona": "announcer",
+    "event": "run_start",
+    "text": "Welcome to SUGAR RUSH! Flap flap flap!",
+    "file": "announcer_start_1.mp3"
+  },
+  {
+    "id": "announcer_flaprate_1",
+    "persona": "announcer",
+    "event": "flap_rate_dropped",
+    "text": "Don't crash now, more sugar, more FLAPS!",
+    "file": "announcer_flaprate_1.mp3"
+  },
+  {
+    "id": "announcer_nearmiss_1",
+    "persona": "announcer",
+    "event": "near_miss",
+    "text": "OHHH! That was SPRINKLE CLOSE!",
+    "file": "announcer_nearmiss_1.mp3"
+  },
+  {
+    "id": "announcer_milestone_1",
+    "persona": "announcer",
+    "event": "milestone",
+    "text": "Higher! Higher! Frosting levels rising!",
+    "file": "announcer_milestone_1.mp3"
+  },
+  {
+    "id": "announcer_newbest_1",
+    "persona": "announcer",
+    "event": "new_best",
+    "text": "NEW HIGH SCORE! The crowd goes WILD!",
+    "file": "announcer_newbest_1.mp3"
+  },
+  {
+    "id": "announcer_death_1",
+    "persona": "announcer",
+    "event": "death",
+    "text": "And down goes the cupcake! LEGENDARY FLOP!",
+    "file": "announcer_death_1.mp3"
+  }
+]

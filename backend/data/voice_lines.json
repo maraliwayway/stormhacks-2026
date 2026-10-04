@@ -1,0 +1,14 @@
+[
+  { "id": "chef_start_1", "persona": "chef", "event": "run_start", "text": "Get out of my kitchen. Upward. NOW." },
+  { "id": "chef_flaprate_1", "persona": "chef", "event": "flap_rate_dropped", "text": "FLAP HARDER! My soufflé has more lift than you!" },
+  { "id": "chef_nearmiss_1", "persona": "chef", "event": "near_miss", "text": "Watch the knives, feather brain!" },
+  { "id": "chef_milestone_1", "persona": "chef", "event": "milestone", "text": "Hmph. Not terrible." },
+  { "id": "chef_newbest_1", "persona": "chef", "event": "new_best", "text": "A new record?! Somebody plate this bird!" },
+  { "id": "chef_death_1", "persona": "chef", "event": "death", "text": "LEGENDARY FLOP!" },
+  { "id": "announcer_start_1", "persona": "announcer", "event": "run_start", "text": "Welcome to SUGAR RUSH! Flap flap flap!" },
+  { "id": "announcer_flaprate_1", "persona": "announcer", "event": "flap_rate_dropped", "text": "Don't crash now, more sugar, more FLAPS!" },
+  { "id": "announcer_nearmiss_1", "persona": "announcer", "event": "near_miss", "text": "OHHH! That was SPRINKLE CLOSE!" },
+  { "id": "announcer_milestone_1", "persona": "announcer", "event": "milestone", "text": "Higher! Higher! Frosting levels rising!" },
+  { "id": "announcer_newbest_1", "persona": "announcer", "event": "new_best", "text": "NEW HIGH SCORE! The crowd goes WILD!" },
+  { "id": "announcer_death_1", "persona": "announcer", "event": "death", "text": "And down goes the cupcake! LEGENDARY FLOP!" }
+]
