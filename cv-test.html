@@ -7,7 +7,9 @@
   <body>
     <button id="start">Start camera</button>
     <br />
-    <video id="video" width="640" height="480" playsinline muted style="transform: scaleX(-1)"></video>
+    <div id="stage" style="position:relative;width:640px;height:480px">
+      <video id="video" width="640" height="480" playsinline muted style="transform: scaleX(-1)"></video>
+    </div>
     <pre id="out"></pre>
     <script type="module" src="/src/input/cv/cvTest.ts"></script>
   </body>

@@ -1,5 +1,6 @@
 import { startTracker, getLatest } from './poseTracker';
 import { L } from './landmarks';
+import { createDebugOverlay } from './debugOverlay';
 
 const btn = document.getElementById('start') as HTMLButtonElement;
 const video = document.getElementById('video') as HTMLVideoElement;
@@ -17,6 +18,7 @@ btn.onclick = async () => {
     return;
   }
   btn.textContent = 'Running';
+  createDebugOverlay(document.getElementById('stage')!);
 
   setInterval(() => {
     const s = getLatest();

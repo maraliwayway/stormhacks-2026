@@ -13,6 +13,7 @@ const latest: TrackerSnapshot = { landmarks: null, fps: 0, inferenceMs: 0, frame
 let landmarker: PoseLandmarker | null = null;
 let lastTs = 0;
 let frameCount = 0;
+let fpsLogTick = 0;
 let fpsWindowStart = performance.now();
 
 export function getLatest(): TrackerSnapshot {
@@ -49,6 +50,9 @@ export async function startTracker(videoEl: HTMLVideoElement): Promise<void> {
       const elapsed = performance.now() - fpsWindowStart;
       if (elapsed >= 1000) {
         latest.fps = (frameCount * 1000) / elapsed;
+        if (++fpsLogTick % 5 === 0) {
+          console.log(`[cv] ${latest.fps.toFixed(1)} fps, ${latest.inferenceMs.toFixed(1)} ms inference`);
+        }
         frameCount = 0;
         fpsWindowStart = performance.now();
       }
