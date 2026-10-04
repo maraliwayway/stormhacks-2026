@@ -31,7 +31,7 @@ function begin() {
       `flapCount ${state.flapCount} | flapRate ${formatNumber(state.flapRate)}/s | flapping ${state.flapping} | flapVelocity ${formatNumber(state.flapVelocity)}`,
       `strafe ${formatNumber(state.strafe)} | left ${state.strafeLeft} | right ${state.strafeRight}`,
       `jump ${state.jump} | squat ${state.squat}`,
-      `swipes left ${state.swipeLeftCount ?? 0} | right / confirm ${state.selectCount ?? 0}`,
+      `prayer selections ${state.selectCount ?? 0} | swipes left ${state.swipeLeftCount ?? 0} | right ${state.swipeRightCount ?? 0}`,
     ].join("\n");
   }, 100);
 }

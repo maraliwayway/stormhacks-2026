@@ -16,12 +16,12 @@ function pose(leftY: number, rightY: number) {
 }
 
 describe("camera motion regressions", () => {
-  it("does not let jumping select a camera menu configured for swipes", () => {
+  it("does not let jumping select a camera menu configured for prayer contacts", () => {
     const ready = {
       ...EMPTY_INPUT,
       tracking: true,
       calibrated: true,
-      menuConfirmMode: "swipe" as const,
+      menuConfirmMode: "clap" as const,
       selectCount: 0,
     };
     const confirm = new MenuConfirm(ready);
@@ -63,7 +63,9 @@ describe("camera motion regressions", () => {
       visibility: 1,
     }));
     landmarks[L.WRIST_L].visibility = 0.1;
-    expect(detector.update(landmarks, 1000).tracking).toBe(false);
+    expect(detector.update(landmarks, 1000).tracking).toBe(true);
+    landmarks[L.WRIST_L].y = 0.6;
+    expect(detector.update(landmarks, 1033).flapCount).toBe(0);
   });
 
   it.each([15, 30, 60])(
@@ -128,7 +130,7 @@ describe("camera motion regressions", () => {
   it("cannot finish a flap across a delayed camera frame", () => {
     const detector = createGestureDetector();
     detector.update(pose(0.2, 0.2), 1000);
-    expect(detector.update(pose(0.6, 0.6), 1300).flapCount).toBe(0);
-    expect(detector.update(pose(0.6, 0.6), 1333).flapCount).toBe(0);
+    expect(detector.update(pose(0.6, 0.6), 1700).flapCount).toBe(0);
+    expect(detector.update(pose(0.6, 0.6), 1733).flapCount).toBe(0);
   });
 });

@@ -45,99 +45,132 @@ try {
   });
   const canvas = await page.locator("canvas").boundingBox();
   assert.ok(Math.abs(canvas.width / canvas.height - 16 / 9) < 0.01);
-  // Feed synthetic camera landmarks through the real detector and menu confirmation.
+  await mkdir("test-results", { recursive: true });
+  // Real gesture recognition feeds the same counter contract as the camera source.
   await page.evaluate(async () => {
     const { createGestureDetector, DEFAULT_CALIBRATION: cal } = await import(
       "/src/input/cv/gestureDetector.ts"
     );
     const { L } = await import("/src/input/cv/landmarks.ts");
     const detector = createGestureDetector();
-    let ts = 1000;
-    window.swipeInput = {
+    let timestampMs = 1000;
+    window.motionInput = {
       ...window.testEmpty,
       tracking: true,
       calibrated: true,
-      menuConfirmMode: "swipe",
+      menuConfirmMode: "clap",
       selectCount: 0,
     };
-    window.testManager.setSource({ getState: () => window.swipeInput });
-    window.swipeFrames = (x, y = cal.shoulderY, frames = 3) => {
-      for (let i = 0; i < frames; i++) {
-        const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.6 }));
-        lm[L.SHOULDER_L] = { x: 0.375, y: cal.shoulderY };
-        lm[L.SHOULDER_R] = { x: 0.625, y: cal.shoulderY };
-        lm[L.HIP_L] = { x: 0.375, y: cal.hipY };
-        lm[L.HIP_R] = { x: 0.625, y: cal.hipY };
-        lm[L.WRIST_L] = { x: 0.65, y: 0.6 };
-        lm[L.WRIST_R] = { x, y };
-        ts += 33;
-        const g = detector.update(lm, ts, cal);
-        window.swipeInput = {
+    window.testManager.setSource({ getState: () => window.motionInput });
+    window.motionFrames = ({
+      together = false,
+      lean = 0,
+      hiddenWrist = false,
+      sweepX = null,
+      frames = 6,
+    } = {}) => {
+      for (let frame = 0; frame < frames; frame++) {
+        const points = Array.from({ length: 33 }, () => ({
+          x: 0.5,
+          y: 0.6,
+          visibility: 1,
+        }));
+        points[L.SHOULDER_L] = {
+          x: 0.375 + lean,
+          y: cal.shoulderY,
+          visibility: 1,
+        };
+        points[L.SHOULDER_R] = {
+          x: 0.625 + lean,
+          y: cal.shoulderY,
+          visibility: 1,
+        };
+        points[L.HIP_L] = { x: 0.375, y: cal.hipY, visibility: 1 };
+        points[L.HIP_R] = { x: 0.625, y: cal.hipY, visibility: 1 };
+        points[L.WRIST_L] = {
+          x: together ? 0.49 : 0.35,
+          y: together ? 0.43 : 0.6,
+          visibility: hiddenWrist ? 0.05 : 0.35,
+        };
+        points[L.WRIST_R] = {
+          x: sweepX ?? (together ? 0.51 : 0.65),
+          y: sweepX !== null ? cal.shoulderY : together ? 0.43 : 0.6,
+          visibility: 0.35,
+        };
+        timestampMs += 33;
+        const gestures = detector.update(points, timestampMs, cal);
+        window.motionInput = {
           ...window.testEmpty,
-          ...g,
-          menuConfirmMode: "swipe",
+          ...gestures,
           calibrated: true,
-          selectCount: g.swipeRightCount,
+          menuConfirmMode: "clap",
+          selectCount: gestures.prayerCount,
         };
       }
     };
-    window.swipeFrames(0.65, 0.6);
-    for (const x of [0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35]) {
-      window.swipeFrames(x);
+    for (const sweepX of [0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35]) {
+      window.motionFrames({ sweepX, frames: 3 });
     }
+    window.motionInput.jump = true;
+    window.motionInput.select = true;
+  });
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Boot").stage),
+    "menu",
+    "swipes and jumps cannot select camera menus",
+  );
+  await page.evaluate(() => {
+    window.motionFrames({ together: true });
   });
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Boot").stage === "controls",
   );
+  await page.screenshot({ path: "test-results/prayer-controls.png" });
   await page.evaluate(() => {
-    window.swipeFrames(0.35, 0.35, 20);
-    // Returning in the wrong direction must not select the next menu.
-    for (const x of [0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65]) {
-      window.swipeFrames(x);
-    }
-    window.swipeInput.jump = true;
-    window.swipeInput.select = true;
+    window.motionFrames({ together: true, frames: 40 });
+    window.motionInput.flapCount++;
+    window.motionInput.jump = true;
   });
   await page.waitForTimeout(100);
   assert.equal(
     await page.evaluate(() => window.testGame.scene.isActive("Game")),
     false,
-    "held hands, leftward swipes and jumping cannot skip the controls",
+    "a held prayer pose and flapping cannot skip controls",
   );
   await page.evaluate(() => {
-    window.swipeFrames(0.65, 0.35, 20);
-    for (const x of [0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35]) {
-      window.swipeFrames(x);
-    }
+    window.motionFrames();
+    window.motionFrames({ together: true });
   });
   await page.waitForFunction(() => window.testGame.scene.isActive("Game"));
   assert.equal(
     await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
     640,
-    "the menu swipe cannot move the starting lane",
+    "prayer selection keeps the starting lane centred",
   );
   await page.evaluate(() => {
-    window.swipeFrames(0.35, 0.35, 20);
-    for (const x of [0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65]) {
-      window.swipeFrames(x);
-    }
+    window.motionFrames({ lean: 0.015, hiddenWrist: true });
   });
+  assert.equal(await page.evaluate(() => window.motionInput.tracking), true);
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Game").flight.x === 340,
   );
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
+    340,
+    "a held tiny lean changes only one lane",
+  );
   await page.evaluate(() => {
-    window.swipeFrames(0.65, 0.35, 20);
-    for (const x of [0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35]) {
-      window.swipeFrames(x);
-    }
+    window.motionFrames({ lean: -0.015, hiddenWrist: true });
   });
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Game").flight.x === 640,
   );
   await page.evaluate(() => {
     window.testGame.scene.getScene("Game").showGameOver();
-    window.swipeInput.flapCount++;
-    window.swipeInput.jump = true;
+    window.motionInput.flapCount++;
+    window.motionInput.jump = true;
   });
   await page.waitForTimeout(100);
   assert.equal(
@@ -146,7 +179,8 @@ try {
     "camera flaps and jumps cannot select a game-over action",
   );
   await page.evaluate(() => {
-    window.swipeInput.selectCount++;
+    window.motionFrames();
+    window.motionFrames({ together: true });
   });
   await page.waitForFunction(() => window.testGame.scene.isActive("Boot"));
   await page.evaluate(async () => {
@@ -613,7 +647,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: rightward-swipe-only menus, no held repeat, wrong-direction and jump rejection, directional swipe lanes, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
+    "Browser checks passed: prayer-only menus, release before repeat, swipes and jumps rejected, tiny lean lanes despite wrist occlusion, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
   );
 } finally {
   await browser?.close();

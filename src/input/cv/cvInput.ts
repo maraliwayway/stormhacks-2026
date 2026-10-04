@@ -26,7 +26,7 @@ export interface CvInput extends InputSource {
  * so the game can pause / show the calibrate screen whenever it goes false.
  */
 export function createCvInput(video: HTMLVideoElement): CvInput {
-  const state: InputState = { ...EMPTY_INPUT, menuConfirmMode: "swipe" };
+  const state: InputState = { ...EMPTY_INPUT, menuConfirmMode: "clap" };
   const calibrator = createCalibrator();
   const lostBodyMonitor = createLostBodyMonitor();
   const detector = createGestureDetector();
@@ -71,7 +71,7 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
           calibrationStatus.phase === "done"
         ) {
           calibrator.start();
-          prompt = "Body lost - step back in the box";
+          prompt = "Bring your upper body back into view";
         }
         if (calibrationStatus.phase === "done") {
           prompt = null;
@@ -87,7 +87,7 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
         state.flapVelocity = gestures.flapVelocity;
         state.flapCount = gestures.flapCount;
         state.flapRate = gestures.flapRate;
-        state.selectCount = gestures.swipeRightCount;
+        state.selectCount = gestures.prayerCount;
         state.swipeLeftCount = gestures.swipeLeftCount;
         state.swipeRightCount = gestures.swipeRightCount;
         state.lastSwipeDirection = gestures.lastSwipeDirection;

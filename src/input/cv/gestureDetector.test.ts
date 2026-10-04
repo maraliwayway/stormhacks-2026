@@ -132,7 +132,10 @@ const tests: Record<string, () => void> = {
       lm[L.SHOULDER_L].x += offset;
       lm[L.SHOULDER_R].x += offset;
       const s = d.update(lm, 1000 + i * FRAME, cal);
-      assert.equal(Math.abs(s.strafe), 0);
+      assert.ok(
+        Math.abs(s.strafe) < FLIGHT.laneEnter,
+        "jitter stays below the lane threshold",
+      );
     }
   },
   "one arm alone cannot flap, and losing tracking clears a half-finished stroke"() {
@@ -193,7 +196,10 @@ const tests: Record<string, () => void> = {
         C,
       );
       assert.equal(s.flapCount, 0);
-      assert.equal(Math.abs(s.strafe), 0);
+      assert.ok(
+        Math.abs(s.strafe) < FLIGHT.laneEnter,
+        "jitter stays below the lane threshold",
+      );
     }
   },
   "idle: nothing fires"() {
@@ -213,12 +219,12 @@ const tests: Record<string, () => void> = {
     assert.equal(down.flapCount, 1);
     assert.equal(down.flapping, true);
   },
-  "slow arm drop (>400 ms) is not a flap"() {
+  "a gentle two-arm downstroke still counts once"() {
     const { d, t } = fresh();
     run(d, t, { wristY: 0.6 }, { wristY: 0.1 }, 200);
     run(d, t, { wristY: 0.1 }, { wristY: 0.1 }, 600); // hold above
     const s = run(d, t, { wristY: 0.1 }, { wristY: 0.6 }, 2500);
-    assert.equal(s.flapCount, 0);
+    assert.equal(s.flapCount, 1);
   },
   "flapRate over 3 s window"() {
     const { d, t } = fresh();
@@ -252,13 +258,13 @@ const tests: Record<string, () => void> = {
   "analog strafe is proportional, signed, and has a deadzone"() {
     const { d, t } = fresh();
     const sw = C.shoulderWidth;
-    let s = run(d, t, {}, { hipX: C.hipX - sw * 0.05 }, 600);
+    let s = run(d, t, {}, { hipX: C.hipX - sw * 0.015 }, 600);
     assert.equal(s.strafe, 0, "inside deadzone");
     s = run(
       d,
       t,
-      { hipX: C.hipX - sw * 0.05 },
-      { hipX: C.hipX - sw * 0.25 },
+      { hipX: C.hipX - sw * 0.015 },
+      { hipX: C.hipX - sw * 0.06 },
       600,
     );
     assert.ok(s.strafe > 0.3 && s.strafe < 0.8, `slight right ${s.strafe}`);
@@ -266,7 +272,7 @@ const tests: Record<string, () => void> = {
     s = run(
       d,
       t,
-      { hipX: C.hipX - sw * 0.25 },
+      { hipX: C.hipX - sw * 0.06 },
       { hipX: C.hipX - sw * 0.8 },
       600,
     );

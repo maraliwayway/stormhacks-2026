@@ -127,7 +127,7 @@ function scheduleFrames(video: HTMLVideoElement, session: number): void {
       latest.droppedFrames++;
       return;
     }
-    // Camera callback timestamps jitter around 30 fps; avoid dropping every other frame.
+    // Allow camera timestamp jitter without skipping every other frame.
     if (timestampMs - lastCapturedMs >= (0.9 * 1000) / TARGET_POSE_FPS) {
       captureFrame(video, timestampMs, session);
     }
@@ -157,7 +157,11 @@ export async function startTracker(video: HTMLVideoElement): Promise<void> {
   });
   try {
     const cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480, frameRate: { ideal: 30, max: 60 } },
+      video: {
+        width: 640,
+        height: 480,
+        frameRate: { ideal: TARGET_POSE_FPS, max: TARGET_POSE_FPS },
+      },
       audio: false,
     });
     if (generation !== session) {

@@ -27,6 +27,7 @@ export interface GestureState {
   flapVelocity: number;
   flapCount: number;
   flapRate: number;
+  prayerCount: number;
   swipeLeftCount: number;
   swipeRightCount: number;
   lastSwipeDirection: -1 | 0 | 1;
@@ -49,6 +50,10 @@ export interface FilteredPose {
   hipY: number;
   wristX: Record<HandSide, number>;
   wristY: Record<HandSide, number>;
+  wristTracked: Record<HandSide, boolean>;
+  handX: Record<HandSide, number>;
+  handY: Record<HandSide, number>;
+  handTracked: Record<HandSide, boolean>;
 }
 
 export type HandSide = "left" | "right";

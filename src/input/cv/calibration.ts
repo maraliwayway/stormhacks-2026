@@ -1,5 +1,6 @@
+import { THRESHOLDS } from "./gestureConfig";
 import type { Calibration } from "./gestureDetector";
-import { L } from "./landmarks";
+import { L, isVisiblePoint } from "./landmarks";
 
 export interface CalPoint {
   x: number;
@@ -11,25 +12,16 @@ export const CAL = {
   captureMs: 2000, // baseline length; with the time to step into the box, total stays under ~5 seconds
   lostPromptMs: 2000, // body missing this long after calibration => ask to recalibrate
   edgeMargin: 0.02, // landmarks closer than this to the image edge count as cut off
-  minVisibility: 0.5,
+  minVisibility: 0.25,
   maxSpread: 0.4, // hips may wander at most this many shoulder widths during capture
   minShoulderWidth: 0.05,
 };
 
-/** Landmarks that must be visible and inside the frame for "full body in frame". */
-const REQUIRED = [
-  L.SHOULDER_L,
-  L.SHOULDER_R,
-  L.HIP_L,
-  L.HIP_R,
-  L.KNEE_L,
-  L.KNEE_R,
-  L.ANKLE_L,
-  L.ANKLE_R,
-];
+/** Shoulders are enough to calibrate a laptop view; hips are used when visible. */
+const REQUIRED = [L.SHOULDER_L, L.SHOULDER_R];
 
 export function bodyInFrame(landmarks: ArrayLike<CalPoint> | null): boolean {
-  if (!landmarks || landmarks.length < 29) {
+  if (!landmarks || landmarks.length < 13) {
     return false;
   }
   const lowerBound = CAL.edgeMargin;
@@ -37,7 +29,7 @@ export function bodyInFrame(landmarks: ArrayLike<CalPoint> | null): boolean {
   return REQUIRED.every((index) => {
     const point = landmarks[index];
     return (
-      (point.visibility ?? 1) >= CAL.minVisibility &&
+      isVisiblePoint(point, CAL.minVisibility) &&
       point.x > lowerBound &&
       point.x < upperBound &&
       point.y > lowerBound &&
@@ -58,6 +50,7 @@ export interface CalibrationStatus {
 }
 
 interface Sample {
+  hipsVisible: boolean;
   shoulderWidth: number;
   hipX: number;
   hipY: number;
@@ -125,14 +118,29 @@ export function createCalibrator() {
       samples = [];
     }
 
+    const shoulderX =
+      (landmarks[L.SHOULDER_L].x + landmarks[L.SHOULDER_R].x) / 2;
+    const shoulderY =
+      (landmarks[L.SHOULDER_L].y + landmarks[L.SHOULDER_R].y) / 2;
+    const shoulderWidth = Math.abs(
+      landmarks[L.SHOULDER_L].x - landmarks[L.SHOULDER_R].x,
+    );
+    const hipsVisible = [L.HIP_L, L.HIP_R].every((index) =>
+      isVisiblePoint(landmarks[index], THRESHOLDS.minHipConfidence),
+    );
     samples.push({
+      hipsVisible,
       shoulderWidth: Math.abs(
         landmarks[L.SHOULDER_L].x - landmarks[L.SHOULDER_R].x,
       ),
-      hipX: (landmarks[L.HIP_L].x + landmarks[L.HIP_R].x) / 2,
-      hipY: (landmarks[L.HIP_L].y + landmarks[L.HIP_R].y) / 2,
-      shoulderY: (landmarks[L.SHOULDER_L].y + landmarks[L.SHOULDER_R].y) / 2,
-      shoulderX: (landmarks[L.SHOULDER_L].x + landmarks[L.SHOULDER_R].x) / 2,
+      hipX: hipsVisible
+        ? (landmarks[L.HIP_L].x + landmarks[L.HIP_R].x) / 2
+        : shoulderX,
+      hipY: hipsVisible
+        ? (landmarks[L.HIP_L].y + landmarks[L.HIP_R].y) / 2
+        : Math.min(0.99, shoulderY + shoulderWidth),
+      shoulderY,
+      shoulderX,
       shoulderRoll:
         (landmarks[L.SHOULDER_R].y - landmarks[L.SHOULDER_L].y) /
         Math.max(
@@ -149,10 +157,13 @@ export function createCalibrator() {
 
   function completeCapture(timestampMs: number): void {
     const shoulderWidth = median(samples.map((sample) => sample.shoulderWidth));
+    const hipsStable = samples.every((sample) => sample.hipsVisible);
     const movementSpread =
       Math.max(
-        spread(samples.map((sample) => sample.hipX)),
-        spread(samples.map((sample) => sample.hipY)),
+        hipsStable ? spread(samples.map((sample) => sample.hipX)) : 0,
+        hipsStable ? spread(samples.map((sample) => sample.hipY)) : 0,
+        spread(samples.map((sample) => sample.shoulderX)),
+        spread(samples.map((sample) => sample.shoulderY)),
       ) / shoulderWidth;
     if (
       shoulderWidth < CAL.minShoulderWidth ||
@@ -165,8 +176,18 @@ export function createCalibrator() {
     } else {
       calibration = {
         shoulderWidth,
-        hipX: median(samples.map((sample) => sample.hipX)),
-        hipY: median(samples.map((sample) => sample.hipY)),
+        hipX: median(
+          samples.map((sample) =>
+            hipsStable ? sample.hipX : sample.shoulderX,
+          ),
+        ),
+        hipY: median(
+          samples.map((sample) =>
+            hipsStable
+              ? sample.hipY
+              : Math.min(0.99, sample.shoulderY + sample.shoulderWidth),
+          ),
+        ),
         shoulderY: median(samples.map((sample) => sample.shoulderY)),
         shoulderX: median(samples.map((sample) => sample.shoulderX)),
         shoulderRoll: median(samples.map((sample) => sample.shoulderRoll)),

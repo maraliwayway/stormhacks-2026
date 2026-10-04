@@ -7,17 +7,19 @@ import {
 } from "./gestureTypes";
 
 interface WristStroke {
+  lowY: number;
   peakY: number;
-  lastRaisedY: number;
-  lastRaisedMs: number;
+  peakMs: number;
+  raised: boolean;
   downstrokeMs: number;
   previousY: number | null;
 }
 function createWristStroke(): WristStroke {
   return {
+    lowY: -Infinity,
     peakY: Infinity,
-    lastRaisedY: 0,
-    lastRaisedMs: 0,
+    peakMs: 0,
+    raised: false,
     downstrokeMs: -Infinity,
     previousY: null,
   };
@@ -27,7 +29,7 @@ type FlapState = Pick<
   "flapping" | "flapVelocity" | "flapCount" | "flapRate"
 >;
 
-/** Both arms arm one cycle together; a downstroke is measured relative to the shoulders. */
+/** Small upward travel prepares a paired downstroke at any arm height. */
 export class FlapDetector {
   private wrists: Record<HandSide, WristStroke> = {
     left: createWristStroke(),
@@ -45,54 +47,60 @@ export class FlapDetector {
     elapsedSeconds: number,
     timestampMs: number,
   ): void {
-    const relativeY = {
-      left: (pose.wristY.left - pose.shoulderY) / shoulderWidth,
-      right: (pose.wristY.right - pose.shoulderY) / shoulderWidth,
-    };
-    const bothRaised = HAND_SIDES.every(
-      (side) => relativeY[side] < -THRESHOLDS.flapZoneMargin,
-    );
-    if (!this.armed && bothRaised) {
-      this.armed = true;
-      for (const side of HAND_SIDES) {
-        this.wrists[side].peakY = relativeY[side];
-        this.wrists[side].downstrokeMs = -Infinity;
-      }
+    if (!pose.wristTracked.left || !pose.wristTracked.right) {
+      this.reset();
+      return;
     }
     let totalSpeed = 0;
     for (const side of HAND_SIDES) {
       const wrist = this.wrists[side];
-      const currentY = relativeY[side];
+      const currentY = (pose.wristY[side] - pose.shoulderY) / shoulderWidth;
       if (wrist.previousY !== null) {
         totalSpeed += Math.abs(currentY - wrist.previousY) / elapsedSeconds;
       }
-      wrist.previousY = currentY;
       if (!this.armed) {
-        continue;
-      }
-      wrist.peakY = Math.min(wrist.peakY, currentY);
-      if (currentY < -THRESHOLDS.flapZoneMargin) {
-        wrist.lastRaisedY = currentY;
-        wrist.lastRaisedMs = timestampMs;
-      } else if (
-        currentY > THRESHOLDS.flapDownMargin &&
-        wrist.downstrokeMs === -Infinity
-      ) {
+        wrist.lowY = Math.max(wrist.lowY, currentY);
+        if (
+          !wrist.raised &&
+          (wrist.lowY - currentY >= THRESHOLDS.flapMinTravel ||
+            (wrist.previousY === null && currentY < -THRESHOLDS.flapZoneMargin))
+        ) {
+          wrist.raised = true;
+          wrist.peakY = currentY;
+          wrist.peakMs = timestampMs;
+        }
+        if (wrist.raised) {
+          this.followPeak(wrist, currentY, timestampMs);
+          if (
+            currentY - wrist.peakY >= THRESHOLDS.flapMinTravel ||
+            timestampMs - wrist.peakMs > THRESHOLDS.flapWindowMs
+          ) {
+            // A lone arm completed its stroke before the other arm rose.
+            wrist.raised = false;
+            wrist.lowY = currentY;
+          }
+        }
+      } else {
+        this.followPeak(wrist, currentY, timestampMs);
         const strokeSeconds = Math.max(
-          (timestampMs - wrist.lastRaisedMs) / 1000,
+          (timestampMs - wrist.peakMs) / 1000,
           0.001,
         );
-        const downSpeed = (currentY - wrist.lastRaisedY) / strokeSeconds;
+        const travel = currentY - wrist.peakY;
         if (
-          timestampMs - wrist.lastRaisedMs <= THRESHOLDS.flapWindowMs &&
-          currentY - wrist.peakY >= THRESHOLDS.flapMinTravel &&
-          downSpeed >= THRESHOLDS.flapMinDownSpeed
+          wrist.downstrokeMs === -Infinity &&
+          travel >= THRESHOLDS.flapMinTravel &&
+          travel / strokeSeconds >= THRESHOLDS.flapMinDownSpeed
         ) {
           wrist.downstrokeMs = timestampMs;
         }
       }
+      wrist.previousY = currentY;
     }
-    const speedBlend = 1 - Math.exp(-elapsedSeconds / 0.09);
+    if (!this.armed && HAND_SIDES.every((side) => this.wrists[side].raised)) {
+      this.armed = true;
+    }
+    const speedBlend = 1 - Math.exp(-elapsedSeconds / 0.05);
     this.speed += speedBlend * (totalSpeed / 2 - this.speed);
     const paired = HAND_SIDES.every(
       (side) =>
@@ -106,20 +114,40 @@ export class FlapDetector {
       this.count++;
       this.lastFlapMs = timestampMs;
       this.recentFlapsMs.push(timestampMs);
-      this.armed = false;
+      this.clearCycle();
     } else if (
       this.armed &&
       HAND_SIDES.some(
         (side) =>
-          timestampMs - this.wrists[side].lastRaisedMs >
-          THRESHOLDS.flapWindowMs,
+          timestampMs - this.wrists[side].peakMs > THRESHOLDS.flapWindowMs,
       )
     ) {
-      this.armed = false;
+      this.clearCycle();
     }
     this.recentFlapsMs = this.recentFlapsMs.filter(
       (flapMs) => timestampMs - flapMs <= THRESHOLDS.rateWindowMs,
     );
+  }
+
+  private followPeak(
+    wrist: WristStroke,
+    currentY: number,
+    timestampMs: number,
+  ): void {
+    wrist.peakY = Math.min(wrist.peakY, currentY);
+    if (currentY - wrist.peakY <= THRESHOLDS.flapPeakTolerance) {
+      wrist.peakMs = timestampMs;
+    }
+  }
+
+  private clearCycle(): void {
+    this.armed = false;
+    for (const wrist of Object.values(this.wrists)) {
+      wrist.lowY = wrist.previousY ?? -Infinity;
+      wrist.peakY = Infinity;
+      wrist.raised = false;
+      wrist.downstrokeMs = -Infinity;
+    }
   }
 
   getState(tracking: boolean, timestampMs: number): FlapState {

@@ -1,7 +1,7 @@
 import type { CalibrationStatus } from "./calibration";
 
 /**
- * "Stand in the box" guide: a silhouette box that turns green when the full body is in
+ * Upper-body guide: a silhouette box that turns green when the shoulders are in
  * frame, plus a progress bar while capturing. Plain canvas so it can sit over the test
  * video or over Phaser. `getStatus` returns null to hide it.
  */
@@ -29,8 +29,8 @@ export function createCalibrationGuide(
     }
 
     const color = status.bodyInFrame ? "#00e676" : "#ff5252";
-    const boxWidth = width * 0.45;
-    const boxHeight = height * 0.92;
+    const boxWidth = width * 0.65;
+    const boxHeight = height * 0.75;
     const x = (width - boxWidth) / 2;
     const y = (height - boxHeight) / 2;
 
@@ -68,7 +68,7 @@ export function createCalibrationGuide(
     const message =
       status.phase === "capturing"
         ? "Hold still..."
-        : (getPrompt() ?? "Stand in the box");
+        : (getPrompt() ?? "Keep your upper body in view");
     context.strokeText(message, width / 2, height - 36);
     context.fillText(message, width / 2, height - 36);
 

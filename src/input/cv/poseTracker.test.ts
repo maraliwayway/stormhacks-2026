@@ -124,17 +124,17 @@ describe("camera frame pipeline", () => {
       inferenceMs: 200,
     });
     expect(getLatest().landmarks).toBe(landmarks);
-    await vi.advanceTimersByTimeAsync(51);
+    await vi.advanceTimersByTimeAsync(401);
     expect(getLatest().landmarks).toBeNull();
     expect(tracking).toHaveBeenLastCalledWith(false);
     await fixture.frame();
     const capturedAt = performance.now();
-    await vi.advanceTimersByTimeAsync(251);
+    await vi.advanceTimersByTimeAsync(601);
     worker.reply({
       type: "pose",
       landmarks,
       timestampMs: capturedAt,
-      inferenceMs: 251,
+      inferenceMs: 601,
     });
     expect(getLatest().landmarks).toBeNull();
   });

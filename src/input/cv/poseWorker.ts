@@ -1,5 +1,9 @@
 import { PoseLandmarker } from "@mediapipe/tasks-vision";
-import type { PoseWorkerRequest, PoseWorkerResponse } from "./poseWorkerTypes";
+import {
+  POSE_CONFIDENCE,
+  type PoseWorkerRequest,
+  type PoseWorkerResponse,
+} from "./poseWorkerTypes";
 
 // A narrow worker interface avoids mixing DOM and WebWorker globals in tsconfig.
 const scope = self as unknown as {
@@ -21,9 +25,9 @@ async function initialize(wasmUrl: string, modelUrl: string): Promise<void> {
         baseOptions: { modelAssetPath: modelUrl, delegate },
         runningMode: "VIDEO",
         numPoses: 1,
-        minPoseDetectionConfidence: 0.5,
-        minPosePresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5,
+        minPoseDetectionConfidence: POSE_CONFIDENCE.detection,
+        minPosePresenceConfidence: POSE_CONFIDENCE.presence,
+        minTrackingConfidence: POSE_CONFIDENCE.tracking,
         outputSegmentationMasks: false,
       });
       scope.postMessage({ type: "ready", delegate });

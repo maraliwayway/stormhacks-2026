@@ -32,6 +32,8 @@ function standingPose(): NormalizedLandmark[] {
   points[L.SHOULDER_R] = { ...points[0], x: 0.625, y: 0.35 };
   points[L.HIP_L].x = 0.375;
   points[L.HIP_R].x = 0.625;
+  points[L.WRIST_L].x = 0.35;
+  points[L.WRIST_R].x = 0.65;
   return points;
 }
 
@@ -40,7 +42,7 @@ afterEach(() => {
 });
 
 describe("camera input integration", () => {
-  it("calibrates, maps directional swipes, and never maps flapping to a menu selection", async () => {
+  it("calibrates, selects only with prayer contacts, and maps sensitive flight gestures", async () => {
     vi.stubGlobal("window", {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
@@ -67,7 +69,7 @@ describe("camera input integration", () => {
       feed(standingPose());
     }
     expect(input.getState().calibrated).toBe(true);
-    expect(input.getState().menuConfirmMode).toBe("swipe");
+    expect(input.getState().menuConfirmMode).toBe("clap");
     const confirm = new MenuConfirm(input.getState());
     for (const direction of [-1, 1]) {
       for (let frame = 0; frame < 12; frame++) {
@@ -82,10 +84,18 @@ describe("camera input integration", () => {
         };
         feed(points);
       }
-      expect(confirm.read(input.getState())).toBe(direction === 1);
+      expect(confirm.read(input.getState())).toBe(false);
     }
     expect(input.getState().swipeLeftCount).toBe(1);
     expect(input.getState().swipeRightCount).toBe(1);
+    for (let frame = 0; frame < 6; frame++) {
+      const points = standingPose();
+      points[L.WRIST_L] = { ...points[0], x: 0.49, y: 0.43 };
+      points[L.WRIST_R] = { ...points[0], x: 0.51, y: 0.43 };
+      feed(points);
+    }
+    expect(confirm.read(input.getState())).toBe(true);
+    expect(confirm.read(input.getState())).toBe(false);
     for (const armY of [0.2, 0.2, 0.2, 0.2, 0.35, 0.45, 0.6]) {
       const points = standingPose();
       points[L.WRIST_L].y = armY;
@@ -96,7 +106,7 @@ describe("camera input integration", () => {
     expect(confirm.read(input.getState())).toBe(false);
     const hiddenWrist = standingPose();
     hiddenWrist[L.WRIST_R].visibility = 0.1;
-    expect(feed(hiddenWrist).tracking).toBe(false);
+    expect(feed(hiddenWrist).tracking).toBe(true);
     expect(confirm.read(input.getState())).toBe(false);
     input.recalibrate();
     expect(input.getState().calibrated).toBe(false);

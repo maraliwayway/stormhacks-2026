@@ -53,8 +53,8 @@ export interface InputState {
   select?: boolean;
   /** Optional monotonic confirmations, so short key presses survive a render frame. */
   selectCount?: number;
-  /** Camera menus accept only the rightward swipe counter; keyboard confirmations remain available. */
-  menuConfirmMode?: "swipe" | "press";
+  /** Camera menus use hands-together contacts; legacy swipe producers remain compatible. */
+  menuConfirmMode?: "clap" | "swipe" | "press";
   /** Completed directional swipes. Counters preserve brief gestures between render frames. */
   swipeLeftCount?: number;
   swipeRightCount?: number;

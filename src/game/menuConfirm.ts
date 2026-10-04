@@ -1,6 +1,6 @@
 import type { InputState } from "../input/types";
 
-/** Camera swipes and keyboard presses confirm once, even across scene changes. */
+/** Hands-together contacts and keyboard presses confirm once across scene changes. */
 export class MenuConfirm {
   private held: boolean;
   private count: number;
@@ -13,7 +13,9 @@ export class MenuConfirm {
     const count = input.selectCount ?? 0;
     const pressed =
       count > this.count ||
-      (input.menuConfirmMode !== "swipe" && held && !this.held);
+      ((!input.menuConfirmMode || input.menuConfirmMode === "press") &&
+        held &&
+        !this.held);
     this.held = held;
     this.count = count;
     return pressed && input.tracking && input.calibrated;

@@ -227,7 +227,7 @@ export class GameScene extends Phaser.Scene {
       this.scene.start("Boot");
       return;
     }
-    if (input.menuConfirmMode === "swipe") {
+    if (input.menuConfirmMode === "clap" || input.menuConfirmMode === "swipe") {
       return;
     }
     if (input.flapCount < this.overBaseline) {
@@ -295,9 +295,7 @@ export class GameScene extends Phaser.Scene {
         "Tap Space to flap   •   Tap left / right to change lane",
       );
     } else {
-      this.hint.setText(
-        "Flap to rise   •   Lean or swipe left/right to change lane",
-      );
+      this.hint.setText("Small flaps to rise   •   A small lean changes lane");
     }
   }
 
@@ -425,6 +423,7 @@ export class GameScene extends Phaser.Scene {
     this.overBaseline = inputManager.getState().flapCount;
     this.confirm = new MenuConfirm(inputManager.getState());
     const retryHint =
+      inputManager.getState().menuConfirmMode === "clap" ||
       inputManager.getState().menuConfirmMode === "swipe"
         ? ""
         : "Flap to try again\n";
@@ -454,7 +453,7 @@ export class GameScene extends Phaser.Scene {
   private confirmHint(): string {
     return inputManager.getState() === keyboard.getState()
       ? "Jump or Enter"
-      : "Swipe one hand left to right";
+      : "Bring your palms together";
   }
 
   private menuButton(): void {
