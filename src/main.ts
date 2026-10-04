@@ -7,6 +7,7 @@ import { mountCameraPanel } from "./input/cv/cameraPanel";
 import type { CvInput } from "./input/cv/cvInput";
 import { keyboard } from "./input/defaultInput";
 import { inputManager } from "./input/inputManager";
+import { installDev3 } from "./net/installDev3";
 import { installScoreSync } from "./net/scoreSync";
 import { gameUi } from "./ui/gameUi";
 
@@ -15,6 +16,8 @@ inputManager.setSource(keyboard);
 const stopScoreSync = installScoreSync();
 const host = document.getElementById("game")!;
 gameUi.mount(host);
+// Dev 3 hook: voice director, SFX, leaderboard and live roast. A no-op offline.
+const stopDev3 = installDev3(host);
 gameUi.updateInput(keyboard.getState(), false);
 gameUi.showMenu(bestScore.get());
 
@@ -117,6 +120,7 @@ if (import.meta.hot) {
     disposed = true;
     cameraDesired = false;
     stopScoreSync();
+    stopDev3();
     stopCamera?.();
     removeActions.forEach((remove) => remove());
     keyboard.stop();

@@ -1,0 +1,169 @@
+/* Owner: Dev 3. Results caption, leaderboard rank and menu "Top flyers", matching the paper palette. */
+
+.dev3-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.dev3-quote {
+  margin: 0;
+  padding: 10px 14px;
+  background: #f4eedd;
+  border-radius: 14px;
+  text-align: left;
+}
+.dev3-quote figcaption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--green);
+}
+.dev3-live {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--coral);
+  color: #fffbf2;
+  font-size: 8px;
+}
+.dev3-quote blockquote {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-style: italic;
+  color: var(--ink);
+}
+
+.dev3-board {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dev3-rank {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.dev3-rank b {
+  font-size: 20px;
+  color: var(--coral);
+}
+.dev3-sign {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.dev3-sign input {
+  width: 118px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--cream);
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+}
+.dev3-sign input:focus-visible,
+.dev3-save:focus-visible,
+.dev3-top-button:focus-visible {
+  outline: 3px solid #d8a24a;
+  outline-offset: 2px;
+}
+.dev3-save {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--green);
+  color: #fffbf2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dev3-top {
+  position: relative;
+}
+.dev3-top-button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--cream);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+  white-space: nowrap;
+}
+.dev3-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: 240px;
+  padding: 14px 16px;
+  background: #fffbef;
+  border: 1px solid #ebe2c7;
+  border-radius: 18px;
+  box-shadow: 0 18px 40px #172d362e;
+}
+.dev3-popover ol {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: flyer;
+}
+.dev3-popover li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+  border-top: 1px solid #efe8d6;
+  counter-increment: flyer;
+}
+.dev3-popover li:not(.dev3-empty)::before {
+  content: counter(flyer);
+  width: 18px;
+  color: var(--muted);
+}
+.dev3-popover li span {
+  flex: 1;
+}
+.dev3-popover li b {
+  color: var(--green);
+}
+.dev3-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+@media (max-height: 580px) {
+  .dev3-panel {
+    margin-top: 8px;
+    gap: 6px;
+  }
+}
+@media (max-width: 520px) {
+  .dev3-top-button {
+    padding: 0 10px;
+  }
+}
+
+/* The caption and rank replace the decorative pigeon on shorter screens so the card still fits. */
+@media (max-height: 860px) {
+  .result-dialog:has(.dev3-quote:not([hidden]), .dev3-board:not([hidden]))
+    .result-bird {
+    display: none;
+  }
+}
