@@ -26,6 +26,10 @@ npm run preview
 
 Keyboard fallback starts by default. Space records one flap per press, arrows provide strafe/jump/squat, and Enter confirms menus. The keyboard badge hides when a CV producer replaces the source. CV menu confirmation can use a new flap count or the optional `select` field. Holding Space does not generate repeated flaps.
 
+`src/game/events.ts` exposes typed `gameEvents.on(name, callback)` subscriptions. It returns an unsubscribe function. Events include `death`, `near_miss`, `new_best`, `milestone`, and `run_end`. Listener failures do not interrupt gameplay.
+
+Dev 3 can register `setScoreSink` from `src/net/scoreSync.ts` to send finished runs to the leaderboard. No backend endpoint is configured yet. Best altitude stays available locally when the backend or browser storage is unavailable.
+
 | Folder | Owner / purpose |
 | --- | --- |
 | `src/input` | Shared contract and input sources |

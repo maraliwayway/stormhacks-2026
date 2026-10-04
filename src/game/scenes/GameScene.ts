@@ -4,6 +4,7 @@ import { keyboard } from '../../input/defaultInput';
 import { Flight, FLIGHT } from '../flight';
 import { gameEvents } from '../events';
 import { BIRD_BOX, HazardField } from '../hazards';
+import { bestScore } from '../storage';
 
 export class GameScene extends Phaser.Scene {
   protected flight!: Flight;
@@ -21,6 +22,9 @@ export class GameScene extends Phaser.Scene {
   private overBaseline = 0;
   private overSelectCount = 0;
   private selectHeld = false;
+  private previousBest = 0;
+  private bestAnnounced = false;
+  private bestHud!: Phaser.GameObjects.Text;
 
   constructor() { super('Game'); }
 
@@ -29,6 +33,8 @@ export class GameScene extends Phaser.Scene {
     this.started = this.time.now;
     this.lastMilestone = 0;
     this.runFlaps = 0;
+    this.previousBest = bestScore.get();
+    this.bestAnnounced = false;
     this.selectHeld = Boolean(inputManager.getState().select);
     this.hazards = new HazardField();
     this.hazardArt = this.add.graphics().setDepth(5);
@@ -54,6 +60,15 @@ export class GameScene extends Phaser.Scene {
       fontSize: '44px', fontStyle: 'bold', color: '#173e47',
       fontFamily: 'Arial, sans-serif',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(30);
+    this.bestHud = this.add.text(1248, 32, `BEST ${Math.floor(this.previousBest)} m`, {
+      fontSize: '24px', color: '#173e47', fontStyle: 'bold',
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(30);
+    if (this.previousBest > 0) {
+      const y = FLIGHT.startY - this.previousBest * FLIGHT.pixelsPerMetre;
+      const marker = this.add.graphics().setDepth(2).lineStyle(3, 0x278b87);
+      for (let x = 90; x < 1200; x += 40) marker.lineBetween(x, y, x + 22, y);
+      this.add.text(90, y - 30, 'BEST', { fontSize: '18px', color: '#237c79' }).setDepth(3);
+    }
     this.badge = this.add.text(30, 30, 'KEYBOARD MODE', {
       fontSize: '16px', color: '#173e47',
     }).setScrollFactor(0).setDepth(30);
@@ -83,6 +98,12 @@ export class GameScene extends Phaser.Scene {
     this.bird.setAngle(Phaser.Math.Clamp(this.flight.velocity / 25, -18, 20));
     this.cameras.main.scrollY = this.flight.cameraY;
     this.score.setText(`${Math.floor(this.flight.altitude)} m`);
+    this.bestHud.setText(`BEST ${Math.floor(Math.max(this.previousBest, this.flight.altitude))} m`);
+    if (!this.bestAnnounced && this.flight.altitude > this.previousBest + 0.1) {
+      this.bestAnnounced = true;
+      gameEvents.emit('new_best', { altitude: this.flight.altitude, previousBest: this.previousBest });
+      this.confetti();
+    }
     const milestone = Math.floor(this.flight.altitude / 25) * 25;
     if (milestone > this.lastMilestone) {
       this.lastMilestone = milestone;
@@ -107,6 +128,7 @@ export class GameScene extends Phaser.Scene {
   protected finishRun(reason: string): void {
     if (this.phase !== 'playing') return;
     this.phase = 'dying';
+    bestScore.set(Math.max(bestScore.get(), this.flight.altitude));
     const duration = (this.time.now - this.started) / 1000;
     gameEvents.emit('death', {
       altitude: this.flight.altitude, duration, reason,
@@ -116,6 +138,15 @@ export class GameScene extends Phaser.Scene {
     this.bird.setTint(0xe87356);
     this.tweens.add({ targets: this.bird, y: this.bird.y + 28, angle: 90, duration: 600 });
     this.time.delayedCall(600, () => this.showGameOver());
+  }
+
+  private confetti(): void {
+    for (let i = 0; i < 24; i++) {
+      const bit = this.add.rectangle(430 + i * 18, 80, 8, 16,
+        [0x62bdb5, 0xf0b949, 0xe77b66][i % 3]).setScrollFactor(0).setDepth(35);
+      this.tweens.add({ targets: bit, x: bit.x + (i - 12) * 14, y: 260 + (i % 4) * 30,
+        angle: i * 40, alpha: 0, duration: 850, onComplete: () => bit.destroy() });
+    }
   }
 
   private showGameOver(): void {

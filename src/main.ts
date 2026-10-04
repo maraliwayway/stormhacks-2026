@@ -4,9 +4,11 @@ import { GameScene } from './game/scenes/GameScene';
 import './style.css';
 import { keyboard } from './input/defaultInput';
 import { inputManager } from './input/inputManager';
+import { installScoreSync } from './net/scoreSync';
 
 void keyboard.start();
 inputManager.setSource(keyboard);
+const stopScoreSync = installScoreSync();
 
 export const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -22,5 +24,5 @@ export const game = new Phaser.Game({
 });
 
 if (import.meta.hot) {
-  import.meta.hot.dispose(() => { keyboard.stop(); game.destroy(true); });
+  import.meta.hot.dispose(() => { stopScoreSync(); keyboard.stop(); game.destroy(true); });
 }
