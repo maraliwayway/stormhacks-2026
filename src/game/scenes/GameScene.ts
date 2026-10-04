@@ -6,6 +6,7 @@ import { gameEvents } from '../events';
 import { BIRD_BOX, HazardField } from '../hazards';
 import { bestScore } from '../storage';
 import { EnemyField, WARNING_SECONDS } from '../enemies';
+import { installVfx } from '../vfx';
 
 export class GameScene extends Phaser.Scene {
   protected flight!: Flight;
@@ -28,6 +29,7 @@ export class GameScene extends Phaser.Scene {
   private previousBest = 0;
   private bestAnnounced = false;
   private bestHud!: Phaser.GameObjects.Text;
+  private slowUntil = 0;
 
   constructor() { super('Game'); }
 
@@ -38,6 +40,7 @@ export class GameScene extends Phaser.Scene {
     this.runFlaps = 0;
     this.previousBest = bestScore.get();
     this.bestAnnounced = false;
+    this.slowUntil = 0;
     this.selectHeld = Boolean(inputManager.getState().select);
     this.hazards = new HazardField();
     this.hazardArt = this.add.graphics().setDepth(5);
@@ -80,6 +83,7 @@ export class GameScene extends Phaser.Scene {
     this.hint = this.add.text(640, 680, 'Tap Space to flap   •   Left / right to change lane', {
       fontSize: '20px', color: '#173e47', backgroundColor: '#fff1d5', padding: { x: 16, y: 8 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(30);
+    installVfx(this, this.bird, this.score, () => { this.slowUntil = this.time.now + 200; });
   }
 
   update(_time: number, delta: number): void {
@@ -95,7 +99,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (this.phase !== 'playing') return;
-    const dt = Math.min(delta, 50) / 1000;
+    const dt = Math.min(delta, 50) / 1000 * (this.time.now < this.slowUntil ? 0.35 : 1);
     const flaps = this.flight.update(input, dt);
     this.runFlaps += flaps;
     if (flaps > 0) gameEvents.emit('flap', { x: this.flight.x, y: this.flight.y, count: flaps });
