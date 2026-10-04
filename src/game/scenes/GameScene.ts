@@ -7,6 +7,9 @@ import { BIRD_BOX, HazardField } from '../hazards';
 import { bestScore } from '../storage';
 import { EnemyField, WARNING_SECONDS } from '../enemies';
 import { installVfx } from '../vfx';
+import { WormField, wormBalance } from '../worms';
+
+const WORMS_ENABLED = import.meta.env.VITE_ENABLE_WORMS === 'true';
 
 export class GameScene extends Phaser.Scene {
   protected flight!: Flight;
@@ -30,8 +33,17 @@ export class GameScene extends Phaser.Scene {
   private bestAnnounced = false;
   private bestHud!: Phaser.GameObjects.Text;
   private slowUntil = 0;
+  private worms!: WormField;
+  private wormArt!: Phaser.GameObjects.Graphics;
+  private wormHud!: Phaser.GameObjects.Text;
 
   constructor() { super('Game'); }
+
+  preload(): void {
+    if (WORMS_ENABLED && !this.cache.audio.exists('worm-pickup')) {
+      this.load.audio('worm-pickup', 'assets/worm-pickup.wav');
+    }
+  }
 
   create(): void {
     this.phase = 'playing';
@@ -46,6 +58,8 @@ export class GameScene extends Phaser.Scene {
     this.hazardArt = this.add.graphics().setDepth(5);
     this.enemies = new EnemyField();
     this.enemyArt = this.add.graphics().setDepth(6);
+    this.worms = new WormField();
+    this.wormArt = this.add.graphics().setDepth(8);
     const input = inputManager.getState();
     this.flight = new Flight(input.flapCount);
     this.flight.velocity = -200;
@@ -80,6 +94,9 @@ export class GameScene extends Phaser.Scene {
     this.badge = this.add.text(30, 30, 'KEYBOARD MODE', {
       fontSize: '16px', color: '#173e47',
     }).setScrollFactor(0).setDepth(30);
+    this.wormHud = this.add.text(30, 60, `WORMS ${wormBalance.get()}`, {
+      fontSize: '20px', color: '#173e47',
+    }).setScrollFactor(0).setDepth(30).setVisible(WORMS_ENABLED);
     this.hint = this.add.text(640, 680, 'Tap Space to flap   •   Left / right to change lane', {
       fontSize: '20px', color: '#173e47', backgroundColor: '#fff1d5', padding: { x: 16, y: 8 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(30);
@@ -137,6 +154,7 @@ export class GameScene extends Phaser.Scene {
       for (const _miss of enemyResult.misses) {
         gameEvents.emit('near_miss', { altitude: this.flight.altitude, x: this.flight.x, y: this.flight.y });
       }
+      if (WORMS_ENABLED) this.updateWorms();
     }
     if (this.flight.offscreen) this.finishRun('fall');
   }
@@ -213,6 +231,25 @@ export class GameScene extends Phaser.Scene {
         g.lineBetween(e.x, e.y - 94, e.x, e.y - 76);
         g.fillStyle(0xb7782e).fillCircle(e.x, e.y - 68, 3);
       }
+    }
+  }
+
+  private updateWorms(): void {
+    this.worms.advance(this.hazards.items, this.flight.cameraY);
+    for (const worm of this.worms.collect({ x: this.flight.x, y: this.flight.y, ...BIRD_BOX })) {
+      wormBalance.set(wormBalance.get() + 1);
+      gameEvents.emit('pickup', { x: worm.x, y: worm.y, total: wormBalance.get() });
+      if (this.cache.audio.exists('worm-pickup')) this.sound.play('worm-pickup', { volume: 0.25 });
+      const pop = this.add.text(worm.x, worm.y, '+1', { fontSize: '28px', color: '#9b3862', fontStyle: 'bold' }).setDepth(20);
+      this.tweens.add({ targets: pop, y: worm.y - 60, alpha: 0, duration: 450, onComplete: () => pop.destroy() });
+    }
+    this.wormHud.setText(`WORMS ${wormBalance.get()}`);
+    const g = this.wormArt;
+    g.clear();
+    for (const w of this.worms.items) {
+      g.lineStyle(10, 0xd77496).beginPath().moveTo(w.x - 15, w.y + 4)
+        .lineTo(w.x - 5, w.y - 5).lineTo(w.x + 6, w.y + 5).lineTo(w.x + 16, w.y - 4).strokePath();
+      g.fillStyle(0x173e47).fillCircle(w.x + 16, w.y - 6, 2);
     }
   }
 

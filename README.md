@@ -32,6 +32,12 @@ Dev 3 can register `setScoreSink` from `src/net/scoreSync.ts` to send finished r
 
 Dev 1 can call `setDifficulty` in `src/game/difficulty.ts` with `enemyEveryMetres`, `enemySpeed`, and weights for `static`, `sweeper`, and `diver`. The default mix runs locally until adaptive tuning lands. Enemies warn for 650 ms before moving or becoming collidable.
 
+## Optional worm pickups
+
+FA-25 is isolated on `feat/worm-pickups`. Copy `.env.example` to `.env.local`, set `VITE_ENABLE_WORMS=true`, and restart Vite to try it. Leave it off until the team's M3 core milestone passes. Worms appear beside hazards, play a short pickup sound, and save the total locally. The sound is an original generated tone that the designer can replace.
+
+The bird, kitchen, hazards, and enemies use code-drawn placeholders. Final art, webcam tracking, voice playback, and the backend transport are separate team integration work.
+
 | Folder | Owner / purpose |
 | --- | --- |
 | `src/input` | Shared contract and input sources |
