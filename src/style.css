@@ -220,18 +220,31 @@ h2:focus {
 .title-screen {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto auto;
+  align-content: start;
   gap: 0 4cqh;
   padding: 3.5cqh 4.5cqh 4cqh;
 }
+/* The brand sits centred above the mirror; the buttons keep the top-right corner. */
 .title-bar {
   grid-column: 1 / -1;
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
+  margin-bottom: 2.4cqh;
+}
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.title-bar .corner {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 .tagline {
-  margin: 0.6cqh 0 0 14.5cqh;
+  margin: -1.6cqh 0 0;
   font-size: 3.6cqh;
 }
 .corner-buttons {
@@ -277,10 +290,15 @@ h2:focus {
 .mirror {
   grid-column: 2;
   grid-row: 2;
+}
+.mirror-actions {
+  grid-column: 2;
+  grid-row: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1.6cqh;
+  margin-top: 1.8cqh;
 }
 .mirror .camera-slot {
   width: 62cqh;
@@ -304,6 +322,7 @@ h2:focus {
   color: var(--muted);
 }
 
+/* Rules and best score sit level with the middle of the mirror. */
 .tips {
   grid-column: 1;
   grid-row: 2;
@@ -380,13 +399,19 @@ h2:focus {
 .figure-arrow {
   stroke: var(--red);
 }
-.figure-flap .figure-arm-left {
+.figure-flap .figure-arm-left,
+.figure-fast .figure-arm-left {
   transform-origin: 90px 49px;
   animation: flap-left 0.9s ease-in-out infinite;
 }
-.figure-flap .figure-arm-right {
+.figure-flap .figure-arm-right,
+.figure-fast .figure-arm-right {
   transform-origin: 90px 49px;
   animation: flap-right 0.9s ease-in-out infinite;
+}
+.figure-fast .figure-arm-left,
+.figure-fast .figure-arm-right {
+  animation-duration: 0.35s;
 }
 .figure-head .figure-person {
   animation: lean 2.4s ease-in-out infinite;

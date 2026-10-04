@@ -17,7 +17,7 @@ function soundButton(): string {
 }
 
 function tip(
-  figure: "flap" | "head" | "dodge",
+  figure: Parameters<typeof movementFigure>[0],
   title: string,
   body: string,
 ): string {
@@ -28,8 +28,8 @@ export function menuView(best: number): string {
   return `<section class="screen title-screen" aria-labelledby="title-heading">
     <header class="title-bar">
       <div class="brand">
-        <h1 id="title-heading" class="logo" tabindex="-1"><img src="${ART}pigeon-flight-3.webp" alt="" />flap or flop</h1>
-        <p class="tagline">Dodge obstacles and stay out of cat lanes.</p>
+        <h1 id="title-heading" class="logo" tabindex="-1"><img src="${ART}pigeon-flight-3.webp" alt="" />Flap or Flop</h1>
+        <p class="tagline">Be a flapper, not a flop</p>
       </div>
       <div class="corner">
         <div class="corner-buttons">${soundButton()}<button class="round-button" data-action="fullscreen" aria-label="Enter fullscreen">${icon("expand")}</button></div>
@@ -38,12 +38,15 @@ export function menuView(best: number): string {
     </header>
     <div class="mirror">
       ${cameraSlot("large")}
+    </div>
+    <div class="mirror-actions">
       <p class="mirror-status" data-menu-status role="status">Looking for your camera…</p>
       <button class="button button-go" data-action="advance" disabled>${icon("palms")}<span>Palms together to fly</span></button>
       <p class="asset-status" data-asset-status role="status" hidden></p>
     </div>
     <ul class="tips" aria-label="How to play">
       ${tip("flap", "Flap your arms", "to fly up")}
+      ${tip("fast", "Flap harder", "to fly up faster")}
       ${tip("head", "Lean your head", "to switch lanes")}
       ${tip("dodge", "Cat face?", "leave its lane")}
     </ul>
