@@ -5,6 +5,19 @@ import { Flight, FLIGHT } from './flight';
 const active = () => ({ ...EMPTY_INPUT, tracking: true, calibrated: true });
 
 describe('flight physics', () => {
+  it('gives one flap over seven metres of lift from rest and caps repeated impulses', () => {
+    const flight = new Flight();
+    flight.velocity = 0;
+    const input = { ...active(), flapCount: 1 };
+    flight.update(input, 1 / 120);
+    while (flight.velocity < 0) flight.update(input, 1 / 120);
+    // Previously a 400 px/s impulse lifted only 2.5 metres from rest.
+    expect(flight.altitude).toBeGreaterThan(7);
+    input.flapCount += 4;
+    flight.update(input, 0);
+    expect(flight.velocity).toBe(-FLIGHT.maxRise);
+  });
+
   it('flapping faster climbs higher, and without flapping the bird only sinks slowly', () => {
     const climb = (rate: number) => {
       const flight = new Flight();

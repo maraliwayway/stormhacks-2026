@@ -22,3 +22,16 @@ export function setDifficulty(next: Difficulty): void {
 }
 
 export function getDifficulty(): Difficulty { return { ...current, enemyMix: { ...current.enemyMix } }; }
+
+export const ENCOUNTER_COOLDOWN_SECONDS = 6;
+export const ALTITUDE_RAMP_METRES = 600;
+
+/** Total run altitude keeps the ramp climbing when the map loops to Kitchen. */
+export function getEncounterPacing(altitude: number, difficulty = getDifficulty()) {
+  const progress = Math.max(0, Math.min(1, altitude / ALTITUDE_RAMP_METRES));
+  return {
+    everyMetres: Math.max(12, Math.max(24, difficulty.enemyEveryMetres) * (1 - progress * 0.5)),
+    // Never overlap cats or reduce their one-second warning to increase difficulty.
+    cooldownSeconds: ENCOUNTER_COOLDOWN_SECONDS - progress * 3,
+  };
+}

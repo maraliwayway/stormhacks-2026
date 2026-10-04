@@ -1,11 +1,11 @@
-import { getDifficulty } from './difficulty';
+import { getDifficulty, getEncounterPacing } from './difficulty';
 import { FLIGHT } from './flight';
 import type { Box } from './hazards';
 
 export const WARNING_SECONDS = 1;
 export const STRIKE_SECONDS = 0.35;
 export const RETREAT_SECONDS = 0.3;
-export const ENCOUNTER_COOLDOWN_SECONDS = 6;
+export { ENCOUNTER_COOLDOWN_SECONDS } from './difficulty';
 
 export interface Enemy extends Box {
   kind: 'cat-paw'; age: number; lane: number; faceOffset: number;
@@ -34,8 +34,9 @@ export class EnemyField {
     this.items.push({ kind: 'cat-paw', lane, x: FLIGHT.lanes[lane], y: cameraY + FLIGHT.height / 2,
       width: 220, height: FLIGHT.height, faceOffset: Math.max(180, Math.min(440, bird.y - cameraY - 130)),
       age: 0, strikeChecked: false, crossedStrike: false });
-    this.nextAltitude = altitude + Math.max(24, difficulty.enemyEveryMetres);
-    this.cooldown = ENCOUNTER_COOLDOWN_SECONDS;
+    const pacing = getEncounterPacing(altitude, difficulty);
+    this.nextAltitude = altitude + pacing.everyMetres;
+    this.cooldown = pacing.cooldownSeconds;
   }
 
   check(bird: Box): { hit: Enemy | undefined; misses: Enemy[] } {

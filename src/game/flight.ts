@@ -4,7 +4,7 @@ export const FLIGHT = {
   width: 1280, height: 720, startY: 550, gravity: 800,
   // Without flapping the bird only sinks slowly (maxFall); each flap adds an upward impulse,
   // so flapping faster climbs faster.
-  impulse: 400, maxFall: 150, maxRise: 600, pixelsPerMetre: 40,
+  impulse: 700, maxFall: 150, maxRise: 1000, pixelsPerMetre: 40,
   lanes: [340, 640, 940],
   // Strafing glides: horizontal speed follows the analog strafe value (-1..1).
   strafeSpeed: 560, strafeResponse: 7, minX: 110, maxX: 1170,

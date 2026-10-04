@@ -5,6 +5,24 @@ import { getDifficulty, setDifficulty } from './difficulty';
 
 const bird = { x: 640, y: 360, ...BIRD_BOX };
 describe('cat ambush', () => {
+  it('spawns more cats at higher altitudes while retaining the full warning and one cat at a time', () => {
+    const countEncounters = (startAltitude: number) => {
+      const field = new EnemyField();
+      let encounters = 0;
+      for (let frame = 0; frame <= 240; frame++) {
+        const altitude = startAltitude + frame * 0.05 * 25;
+        field.tick(altitude, 0, frame === 0 ? 0 : 0.05, undefined, bird);
+        expect(field.items.length).toBeLessThanOrEqual(1);
+        const cat = field.items[0];
+        if (cat?.age === 0) encounters++;
+        if (cat && cat.age < WARNING_SECONDS) expect(field.check(bird).hit).toBeUndefined();
+        field.check({ ...bird, x: 340 });
+      }
+      return encounters;
+    };
+    expect(countEncounters(1000)).toBeGreaterThan(countEncounters(20));
+  });
+
   it('warns for a full second, then strikes the same lane even if the bird climbs', () => {
     const field = new EnemyField();
     field.tick(20, 0, 0, undefined, bird);
