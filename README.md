@@ -69,3 +69,7 @@ Jump, press Enter, or click Start to see the controls. Confirm again to fly. Spa
 Kitchen runs from 0 to 60 metres and Dessert from 60 to 120 metres. These are provisional demo distances in `src/game/levels.ts`. Altitude and score continue across the level boundary. Each level starts with a lift boost. Reaching 120 metres wins the run in Bird Heaven. `level_start` and `win` events are available to the voice director.
 
 The browser game targets a laptop. Native desktop packaging, slots, inventory, powerups, final art, and live encouragement need their respective team integrations. Multiplayer and daily streaks are excluded as shown in the MVP storyboard. The designer's reference calls for clean 2D shapes, bright contrasting colours, and medium pencil-textured outlines. Current art is drawn placeholder art with medium outlines; final texture assets come from the designer.
+
+## Gentle obstacle pacing
+
+FA-9 follow-up spaces hazard rows 620 px apart (previously 280 px), with only one blocked lane per row and a longer clear opening. Cat encounters reserve a corridor in all lanes so a paw dodge does not compete with a kitchen obstacle. Skipped rows stay skipped after the paw retreats; later obstacles resume normally. Difficulty still needs a short arm-flapping playtest on the demo laptop.

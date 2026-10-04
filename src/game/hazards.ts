@@ -20,18 +20,21 @@ export function seededRandom(seed: number): () => number {
   };
 }
 
-const PATTERNS = [[0], [2], [0, 2], [1]];
+const PATTERNS = [[0], [2], [1]];
+export const HAZARD_ROW_SPACING = 620;
+const CAT_CLEAR_AHEAD = 700;
+const CAT_CLEAR_BEHIND = 240;
 const KINDS = ['pot', 'knife', 'pin'] as const;
 
 export class HazardField {
   items: Hazard[] = [];
   private random: () => number;
-  private nextY = 140;
+  private nextY = -100;
   private id = 0;
 
   constructor(seed = 2026) { this.random = seededRandom(seed); }
 
-  advance(cameraY: number): void {
+  advance(cameraY: number, catBirdY?: number): void {
     while (this.nextY > cameraY - 500) {
       const pattern = PATTERNS[Math.floor(this.random() * PATTERNS.length)];
       for (const lane of pattern) {
@@ -42,9 +45,10 @@ export class HazardField {
           passed: false,
         });
       }
-      this.nextY -= 280;
+      this.nextY -= HAZARD_ROW_SPACING;
     }
-    this.items = this.items.filter(item => item.y < cameraY + FLIGHT.height + 180);
+    this.items = this.items.filter(item => item.y < cameraY + FLIGHT.height + 180
+      && (catBirdY === undefined || item.y < catBirdY - CAT_CLEAR_AHEAD || item.y > catBirdY + CAT_CLEAR_BEHIND));
   }
 
   check(bird: Box): { hit: Hazard | undefined; misses: Hazard[] } {

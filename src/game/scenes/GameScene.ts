@@ -156,15 +156,16 @@ export class GameScene extends Phaser.Scene {
     if (hasWon(this.flight.altitude)) { this.winRun(); return; }
     this.drawBackdrop();
     if (input.tracking && input.calibrated) {
-      this.hazards.advance(this.flight.cameraY);
+      const birdBox = { x: this.flight.x, y: this.flight.y, ...BIRD_BOX };
+      this.enemies.tick(this.flight.altitude, this.flight.cameraY, Math.min(delta, 50) / 1000, undefined, birdBox);
+      // A cat beat reserves a clear flight corridor in all three lanes.
+      this.hazards.advance(this.flight.cameraY, this.enemies.items.length ? this.flight.y : undefined);
       const result = this.hazards.check({ x: this.flight.x, y: this.flight.y, ...BIRD_BOX });
       this.drawHazards();
       if (result.hit) { this.finishRun(result.hit.kind); return; }
       for (const _miss of result.misses) {
         gameEvents.emit('near_miss', { altitude: this.flight.altitude, x: this.flight.x, y: this.flight.y });
       }
-      this.enemies.tick(this.flight.altitude, this.flight.cameraY, Math.min(delta, 50) / 1000, undefined,
-        { x: this.flight.x, y: this.flight.y, ...BIRD_BOX });
       const enemyResult = this.enemies.check({ x: this.flight.x, y: this.flight.y, ...BIRD_BOX });
       this.drawEnemies();
       if (enemyResult.hit) { this.finishRun(enemyResult.hit.kind); return; }
