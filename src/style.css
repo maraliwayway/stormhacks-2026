@@ -375,9 +375,6 @@ h2:focus {
   font-size: 8cqh;
   font-weight: 400;
   line-height: 1;
-  text-decoration: underline wavy var(--red);
-  text-decoration-thickness: 0.35cqh;
-  text-underline-offset: 1.2cqh;
 }
 
 /* Doodle figures in the tips. */

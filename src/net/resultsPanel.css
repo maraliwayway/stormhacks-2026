@@ -1,124 +1,122 @@
-/* Owner: Dev 3. Results caption, leaderboard rank and menu "Top flyers", matching the paper palette. */
+/* Owner: Dev 3. Results caption, leaderboard rank and menu "Top flyers", using the game's paper/ink theme. */
 
 .dev3-panel {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 1.4cqh;
 }
 
 .dev3-quote {
   margin: 0;
-  padding: 10px 14px;
-  background: #f4eedd;
-  border-radius: 14px;
+  padding: 1.2cqh 1.8cqh;
+  border: 0.3cqh solid var(--ink);
+  border-radius: 1.4cqh;
+  background: #fff;
   text-align: left;
 }
 .dev3-quote figcaption {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  gap: 1cqh;
+  font-size: 2.2cqh;
   text-transform: uppercase;
-  color: var(--green);
+  letter-spacing: 0.1em;
+  color: var(--muted);
 }
 .dev3-live {
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: var(--coral);
-  color: #fffbf2;
-  font-size: 8px;
+  padding: 0 0.8cqh;
+  border: 0.25cqh solid var(--ink);
+  border-radius: 0.8cqh;
+  background: var(--yellow);
+  color: var(--ink);
+  font-size: 2cqh;
 }
 .dev3-quote blockquote {
-  margin: 4px 0 0;
-  font-size: 13px;
-  line-height: 1.4;
-  font-style: italic;
+  margin: 0.4cqh 0 0;
+  font-size: 3cqh;
+  line-height: 1.25;
   color: var(--ink);
 }
 
 .dev3-board {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 1cqh;
 }
 .dev3-rank {
   margin: 0;
-  font-size: 12px;
+  font-size: 3cqh;
   color: var(--muted);
 }
 .dev3-rank b {
-  font-size: 20px;
-  color: var(--coral);
+  font-family: var(--display);
+  font-size: 5cqh;
+  font-weight: 400;
+  color: var(--ink);
 }
 .dev3-sign {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 1cqh;
+  font-size: 2.8cqh;
   color: var(--muted);
 }
 .dev3-sign input {
-  width: 118px;
-  min-height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--cream);
+  width: 20cqh;
+  padding: 0.5cqh 1.2cqh;
+  border: 0.3cqh solid var(--ink);
+  border-radius: 1cqh;
+  background: #fff;
   font: inherit;
-  font-size: 13px;
+  font-size: 3cqh;
   color: var(--ink);
 }
-.dev3-sign input:focus-visible,
-.dev3-save:focus-visible,
-.dev3-top-button:focus-visible {
-  outline: 3px solid #d8a24a;
-  outline-offset: 2px;
+.dev3-sign input:focus-visible {
+  outline: 0.4cqh dashed var(--ink);
+  outline-offset: 0.4cqh;
 }
 .dev3-save {
-  min-height: 36px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--green);
-  color: #fffbf2;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 2.8cqh;
+  padding: 0.2em 0.8em 0.25em;
+}
+.dev3-save:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 
+/* Menu button: same outlined, shadowed shape as the game's other buttons. */
 .dev3-top {
   position: relative;
 }
 .dev3-top-button {
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--cream);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--green);
+  height: 7.5cqh;
+  font-size: 3cqh;
   white-space: nowrap;
 }
 .dev3-popover {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 1.4cqh);
   right: 0;
   z-index: 30;
-  width: 240px;
-  padding: 14px 16px;
-  background: #fffbef;
-  border: 1px solid #ebe2c7;
-  border-radius: 18px;
-  box-shadow: 0 18px 40px #172d362e;
+  width: 34cqh;
+  padding: 1.8cqh 2.2cqh;
+  border: 0.45cqh solid var(--ink);
+  border-radius: 2cqh;
+  background: var(--paper);
+  box-shadow: 0.9cqh 0.9cqh 0 var(--ink);
+  text-align: left;
+}
+.dev3-popover .small-label {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 4cqh;
+  letter-spacing: 0.05em;
+  color: var(--ink);
 }
 .dev3-popover ol {
-  margin: 8px 0 0;
+  margin: 1cqh 0 0;
   padding: 0;
   list-style: none;
   counter-reset: flyer;
@@ -126,36 +124,24 @@
 .dev3-popover li {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 5px 0;
-  font-size: 13px;
-  border-top: 1px solid #efe8d6;
+  gap: 1cqh;
+  padding: 0.6cqh 0;
+  font-size: 3cqh;
+  border-top: 0.25cqh dashed var(--muted);
   counter-increment: flyer;
 }
 .dev3-popover li:not(.dev3-empty)::before {
   content: counter(flyer);
-  width: 18px;
+  width: 3cqh;
   color: var(--muted);
 }
 .dev3-popover li span {
   flex: 1;
 }
 .dev3-popover li b {
-  color: var(--green);
+  font-weight: 400;
+  color: var(--ink);
 }
 .dev3-empty {
   color: var(--muted);
-  font-style: italic;
-}
-
-@media (max-height: 580px) {
-  .dev3-panel {
-    margin-top: 8px;
-    gap: 6px;
-  }
-}
-@media (max-width: 520px) {
-  .dev3-top-button {
-    padding: 0 10px;
-  }
 }

@@ -24,7 +24,7 @@ const PANEL_HTML = `<section class="dev3-panel" aria-label="Voice and leaderboar
     <form class="dev3-sign" data-dev3-sign>
       <label for="dev3-name">Signed as</label>
       <input id="dev3-name" name="name" maxlength="${NAME_MAX}" autocomplete="off" spellcheck="false" required />
-      <button type="submit" class="dev3-save">Save</button>
+      <button type="submit" class="button button-go dev3-save">Save</button>
     </form>
   </div>
 </section>`;
@@ -128,8 +128,8 @@ function renderTop(
 function attachTopFlyers(tools: HTMLElement): void {
   const wrap = document.createElement("div");
   wrap.className = "dev3-top";
-  wrap.innerHTML = `<button type="button" class="dev3-top-button" aria-expanded="false" aria-controls="dev3-top-list">Top flyers</button>
-    <div class="dev3-popover" id="dev3-top-list" hidden><p class="small-label">TOP FLYERS</p><ol></ol></div>`;
+  wrap.innerHTML = `<button type="button" class="button dev3-top-button" aria-expanded="false" aria-controls="dev3-top-list">Top flyers</button>
+    <div class="dev3-popover" id="dev3-top-list" hidden><p class="small-label">Top flyers</p><ol></ol></div>`;
   tools.prepend(wrap);
   const button = wrap.querySelector<HTMLButtonElement>("button")!;
   const popover = wrap.querySelector<HTMLElement>(".dev3-popover")!;
