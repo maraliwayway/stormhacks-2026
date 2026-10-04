@@ -1,6 +1,7 @@
 import { createCalibrationGuide } from "./calibrationGuide";
 import type { CvInput } from "./cvInput";
 import { createDebugOverlay } from "./debugOverlay";
+import { createHeadSteeringGuide } from "./headSteeringGuide";
 
 export type CameraMode = "large" | "mini";
 
@@ -57,12 +58,13 @@ export function mountCameraPanel(
   stage = document.createElement("div");
   stage.style.cssText = `position:absolute;left:0;top:0;width:${PREVIEW_WIDTH}px;height:480px;transform-origin:0 0;transition:transform .25s`;
   video.style.cssText =
-    "position:absolute;left:0;top:0;width:640px;height:480px;transform:scaleX(-1);object-fit:cover";
+    "position:absolute;left:0;top:0;width:640px;height:480px;transform:scaleX(-1);object-fit:contain";
   stage.appendChild(video);
   root.appendChild(stage);
   document.body.appendChild(root);
 
-  overlay = createDebugOverlay(stage);
+  const steeringGuide = createHeadSteeringGuide(stage, input.getState, video);
+  overlay = createDebugOverlay(stage, 640, 480, video);
   const guide = createCalibrationGuide(
     stage,
     () => cv!.getCalibration(),
@@ -108,6 +110,7 @@ export function mountCameraPanel(
     destroy() {
       cancelAnimationFrame(animationFrameId);
       overlay?.destroy();
+      steeringGuide.destroy();
       guide.destroy();
       root?.remove();
       root = stage = overlay = cv = null;
