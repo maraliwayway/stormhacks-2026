@@ -38,7 +38,7 @@ export class KeyboardInput implements InputSource {
       this.state.flapCount += 1;
       this.flaps.push(this.now());
     }
-    if (event.code === 'Enter') this.state.selectCount = (this.state.selectCount ?? 0) + 1;
+    if (event.code === 'Enter' || event.code === 'ArrowUp') this.state.selectCount = (this.state.selectCount ?? 0) + 1;
     this.updateHeld();
   };
 

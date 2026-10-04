@@ -8,6 +8,8 @@ import { bestScore } from '../storage';
 import { EnemyField, WARNING_SECONDS } from '../enemies';
 import { installVfx } from '../vfx';
 import { WormField, wormBalance } from '../worms';
+import { MenuConfirm } from '../menuConfirm';
+import { levelAt, hasWon } from '../levels';
 
 const WORMS_ENABLED = import.meta.env.VITE_ENABLE_WORMS === 'true';
 
@@ -19,7 +21,7 @@ export class GameScene extends Phaser.Scene {
   protected badge!: Phaser.GameObjects.Text;
   protected hint!: Phaser.GameObjects.Text;
   protected started = 0;
-  protected phase: 'playing' | 'dying' | 'over' = 'playing';
+  protected phase: 'playing' | 'dying' | 'over' | 'won' = 'playing';
   private lastMilestone = 0;
   protected hazards!: HazardField;
   protected hazardArt!: Phaser.GameObjects.Graphics;
@@ -27,8 +29,9 @@ export class GameScene extends Phaser.Scene {
   private enemyArt!: Phaser.GameObjects.Graphics;
   private runFlaps = 0;
   private overBaseline = 0;
-  private overSelectCount = 0;
-  private selectHeld = false;
+  private confirm!: MenuConfirm;
+  private level = levelAt(0);
+  private levelHud!: Phaser.GameObjects.Text;
   private previousBest = 0;
   private bestAnnounced = false;
   private bestHud!: Phaser.GameObjects.Text;
@@ -53,7 +56,8 @@ export class GameScene extends Phaser.Scene {
     this.previousBest = bestScore.get();
     this.bestAnnounced = false;
     this.slowUntil = 0;
-    this.selectHeld = Boolean(inputManager.getState().select);
+    this.confirm = new MenuConfirm(inputManager.getState());
+    this.level = levelAt(0);
     this.hazards = new HazardField();
     this.hazardArt = this.add.graphics().setDepth(5);
     this.enemies = new EnemyField();
@@ -62,7 +66,7 @@ export class GameScene extends Phaser.Scene {
     this.wormArt = this.add.graphics().setDepth(8);
     const input = inputManager.getState();
     this.flight = new Flight(input.flapCount);
-    this.flight.velocity = -200;
+    this.flight.velocity = -FLIGHT.impulse;
     this.cameras.main.setBackgroundColor('#f5dfb5');
     this.cameras.main.setScroll(0, 0);
     this.backdrop = this.add.graphics().setScrollFactor(0).setDepth(-10);
@@ -82,6 +86,10 @@ export class GameScene extends Phaser.Scene {
       fontSize: '44px', fontStyle: 'bold', color: '#173e47',
       fontFamily: 'Arial, sans-serif',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(30);
+    this.levelHud = this.add.text(640, 90, this.level.label, {
+      fontSize: '20px', color: '#173e47', fontStyle: 'bold',
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(30);
+    gameEvents.emit('level_start', { level: this.level.id, altitude: 0 });
     this.bestHud = this.add.text(1248, 32, `BEST ${Math.floor(this.previousBest)} m`, {
       fontSize: '24px', color: '#173e47', fontStyle: 'bold',
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(30);
@@ -106,13 +114,11 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const input = inputManager.getState();
     this.badge.setVisible(input === keyboard.getState());
-    const selected = Boolean(input.select) && !this.selectHeld;
-    this.selectHeld = Boolean(input.select);
-    if (this.phase === 'over') {
+    const confirmed = this.confirm.read(input);
+    if (this.phase === 'over' || this.phase === 'won') {
+      if (confirmed) { this.scene.start('Boot'); return; }
       if (input.flapCount < this.overBaseline) this.overBaseline = input.flapCount;
-      const confirmations = input.selectCount ?? 0;
-      if (confirmations < this.overSelectCount) this.overSelectCount = confirmations;
-      if (input.flapCount > this.overBaseline || selected || confirmations > this.overSelectCount) this.scene.restart();
+      if (this.phase === 'over' && input.tracking && input.calibrated && input.flapCount > this.overBaseline) this.scene.restart();
       return;
     }
     if (this.phase !== 'playing') return;
@@ -135,9 +141,19 @@ export class GameScene extends Phaser.Scene {
       this.lastMilestone = milestone;
       gameEvents.emit('milestone', { altitude: milestone });
     }
-    this.hint.setText(input.tracking && input.calibrated
-      ? 'Tap Space to flap   •   Left / right to change lane'
-      : 'Tracking paused. Return to the camera or use keyboard mode.');
+    this.hint.setText(!input.tracking || !input.calibrated
+      ? 'Tracking paused. Return to the camera or use keyboard mode.'
+      : input === keyboard.getState()
+        ? 'Tap Space to flap   •   Left / right to change lane'
+        : 'Flap both arms to rise   •   Lean left / right to change lane');
+    const nextLevel = levelAt(this.flight.altitude);
+    if (nextLevel.id !== this.level.id) {
+      this.level = nextLevel;
+      this.levelHud.setText(nextLevel.label);
+      this.flight.velocity = Math.min(this.flight.velocity, -FLIGHT.impulse);
+      gameEvents.emit('level_start', { level: nextLevel.id, altitude: this.flight.altitude });
+    }
+    if (hasWon(this.flight.altitude)) { this.winRun(); return; }
     this.drawBackdrop();
     if (input.tracking && input.calibrated) {
       this.hazards.advance(this.flight.cameraY);
@@ -177,7 +193,7 @@ export class GameScene extends Phaser.Scene {
   private confetti(): void {
     for (let i = 0; i < 24; i++) {
       const bit = this.add.rectangle(430 + i * 18, 80, 8, 16,
-        [0x62bdb5, 0xf0b949, 0xe77b66][i % 3]).setScrollFactor(0).setDepth(35);
+        [0x62bdb5, 0xf0b949, 0xe77b66][i % 3]).setScrollFactor(0).setDepth(45);
       this.tweens.add({ targets: bit, x: bit.x + (i - 12) * 14, y: 260 + (i % 4) * 30,
         angle: i * 40, alpha: 0, duration: 850, onComplete: () => bit.destroy() });
     }
@@ -186,19 +202,49 @@ export class GameScene extends Phaser.Scene {
   private showGameOver(): void {
     this.phase = 'over';
     this.overBaseline = inputManager.getState().flapCount;
-    this.overSelectCount = inputManager.getState().selectCount ?? 0;
-    this.selectHeld = Boolean(inputManager.getState().select);
+    this.confirm = new MenuConfirm(inputManager.getState());
     this.add.rectangle(640, 360, 1280, 720, 0x183e46, 0.5).setScrollFactor(0).setDepth(39);
-    this.add.text(640, 320, `LEGENDARY FLOP\n${Math.floor(this.flight.altitude)} metres\n\nFlap or press Enter to try again`, {
+    this.add.text(640, 320, `LEGENDARY FLOP\n${Math.floor(this.flight.altitude)} metres\n\nFlap to try again\nJump or Enter for main menu`, {
       fontSize: '36px', color: '#fff4dc', backgroundColor: '#183e46',
       align: 'center', padding: { x: 40, y: 30 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(40);
+    this.menuButton();
+  }
+
+  private menuButton(): void {
+    this.add.text(640, 580, 'MAIN MENU', {
+      fontSize: '24px', color: '#183e46', backgroundColor: '#ffd46b', padding: { x: 24, y: 12 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.scene.start('Boot'));
+  }
+
+  private winRun(): void {
+    this.phase = 'won';
+    this.confirm = new MenuConfirm(inputManager.getState());
+    bestScore.set(Math.max(bestScore.get(), this.flight.altitude));
+    const duration = (this.time.now - this.started) / 1000;
+    gameEvents.emit('win', { altitude: this.flight.altitude, duration });
+    gameEvents.emit('run_end', { altitude: this.flight.altitude, duration });
+    this.add.rectangle(640, 360, 1280, 720, 0x183e46, 0.85).setScrollFactor(0).setDepth(39);
+    this.add.text(640, 300, 'BIRD HEAVEN\nYou made it!\n\nJump or Enter for main menu', {
+      fontSize: '42px', color: '#fff4dc', align: 'center',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(40);
+    this.menuButton();
+    this.confetti();
   }
 
   private drawHazards(): void {
     const g = this.hazardArt;
     g.clear();
     for (const h of this.hazards.items) {
+      if (this.level.id === 'dessert') {
+        g.fillStyle(h.kind === 'pot' ? 0xe77b96 : h.kind === 'knife' ? 0x8c5c49 : 0xeab75c)
+          .fillRoundedRect(h.x - h.width / 2, h.y - h.height / 2, h.width, h.height, 14);
+        g.lineStyle(4, 0x173e47).strokeRoundedRect(h.x - h.width / 2, h.y - h.height / 2, h.width, h.height, 14);
+        g.fillStyle(0xfff2d6);
+        for (let x = h.x - h.width / 2 + 12; x < h.x + h.width / 2; x += 28) g.fillCircle(x, h.y - 5, 5);
+        continue;
+      }
       const left = h.x - h.width / 2;
       const top = h.y - h.height / 2;
       g.fillStyle(h.kind === 'knife' ? 0x7893a0 : h.kind === 'pin' ? 0xb17148 : 0x517783);
@@ -256,13 +302,13 @@ export class GameScene extends Phaser.Scene {
   private drawBackdrop(): void {
     const g = this.backdrop;
     g.clear();
-    g.fillStyle(0xe7c99b).fillRect(70, 0, 1140, 720);
-    g.lineStyle(2, 0xdbc08f, 0.6);
+    g.fillStyle(this.level.id === 'dessert' ? 0xf7c4d5 : 0xe7c99b).fillRect(70, 0, 1140, 720);
+    g.lineStyle(2, this.level.id === 'dessert' ? 0xda86a5 : 0xdbc08f, 0.6);
     for (let x = 100; x < 1280; x += 120) g.lineBetween(x, 0, x, 720);
     const offset = ((-this.flight.cameraY * 0.5) % 240 + 240) % 240;
     for (let y = offset - 240; y < 720; y += 240) {
       g.lineBetween(70, y, 1210, y);
-      g.fillStyle(0xc29664).fillRoundedRect(100, y + 150, 1080, 18, 6);
+      g.fillStyle(this.level.id === 'dessert' ? 0xb97596 : 0xc29664).fillRoundedRect(100, y + 150, 1080, 18, 6);
     }
     g.fillStyle(0x183e46, 0.06);
     for (const x of FLIGHT.lanes) g.fillRect(x - 2, 0, 4, 720);

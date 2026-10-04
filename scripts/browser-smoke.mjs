@@ -34,6 +34,9 @@ try {
   const canvas = await page.locator('canvas').boundingBox();
   assert.ok(Math.abs(canvas.width / canvas.height - 16 / 9) < 0.01);
   await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.testGame.scene.getScene('Boot').stage === 'controls');
+  assert.equal(await page.evaluate(() => window.testGame.scene.isActive('Game')), false);
+  await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
     const game = window.testGame;
     return game.scene.isActive('Game');
@@ -46,6 +49,18 @@ try {
     const game = window.testGame;
     return game.scene.getScene('Game').phase === 'over';
   }, null, { timeout: 10000 });
+  // A confirmation returns to the menu. A held jump cannot skip the controls.
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.testGame.scene.isActive('Boot'));
+  await page.keyboard.down('ArrowUp');
+  await page.waitForFunction(() => window.testGame.scene.getScene('Boot').stage === 'controls');
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => window.testGame.scene.isActive('Game')), false);
+  await page.keyboard.up('ArrowUp');
+  await page.waitForTimeout(50);
+  await page.keyboard.press('ArrowUp');
+  await page.waitForFunction(() => window.testGame.scene.isActive('Game'));
+  await page.waitForFunction(() => window.testGame.scene.getScene('Game').phase === 'over', null, { timeout: 10000 });
   await page.keyboard.press('Space');
   await page.waitForFunction(() => {
     const game = window.testGame;
@@ -116,8 +131,37 @@ try {
   const resized = await page.locator('canvas').boundingBox();
   assert.ok(Math.abs(resized.width / resized.height - 16 / 9) < 0.01);
   assert.ok(resized.width <= 900 && resized.height <= 900);
+  // Place the bird at authored boundaries, then let the real scene update drive flow.
+  await page.evaluate(async () => {
+    window.testInput.tracking = true;
+    const scene = window.testGame.scene.getScene('Game');
+    scene.flight.y = 550 - 60 * 40;
+    scene.flight.velocity = -100;
+    window.endEvents = 0;
+    window.winEvents = 0;
+    const { gameEvents } = await import('/src/game/events.ts');
+    gameEvents.on('run_end', () => window.endEvents++);
+    gameEvents.on('win', () => window.winEvents++);
+  });
+  await page.waitForFunction(() => window.testGame.scene.getScene('Game').level.id === 'dessert');
+  assert.equal(await page.evaluate(() => window.testGame.scene.getScene('Game').levelHud.text), 'DESSERT');
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.screenshot({ path: 'test-results/dessert.png' });
+  await page.evaluate(() => {
+    const scene = window.testGame.scene.getScene('Game');
+    scene.flight.y = 550 - 120 * 40;
+    scene.flight.velocity = -100;
+  });
+  await page.waitForFunction(() => window.testGame.scene.getScene('Game').phase === 'won');
+  await page.waitForTimeout(100);
+  assert.deepEqual(await page.evaluate(() => [window.winEvents, window.endEvents]), [1, 1]);
+  await page.screenshot({ path: 'test-results/victory.png' });
+  await page.evaluate(() => { window.testInput.jump = true; });
+  await page.waitForFunction(() => window.testGame.scene.isActive('Boot'));
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => window.testGame.scene.getScene('Boot').stage), 'menu');
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, no runtime errors.');
+  console.log('Browser checks passed: canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, victory, menu return, held jump protection, no runtime errors.');
 } finally {
   await browser?.close();
   await server.close();

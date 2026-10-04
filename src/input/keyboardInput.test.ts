@@ -37,6 +37,10 @@ describe('keyboard fallback', () => {
     key(target, 'keyup', 'Enter');
     expect(source.getState().select).toBe(false);
     expect(source.getState().selectCount).toBe(1);
+    key(target, 'keydown', 'ArrowUp');
+    key(target, 'keyup', 'ArrowUp');
+    expect(source.getState().jump).toBe(false);
+    expect(source.getState().selectCount).toBe(2);
     target.dispatchEvent(new Event('blur'));
     expect(source.getState().strafeLeft).toBe(false);
     expect(source.getState().select).toBe(false);

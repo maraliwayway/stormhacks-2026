@@ -6,6 +6,8 @@ export interface GameEvents {
   new_best: { altitude: number; previousBest: number };
   milestone: { altitude: number };
   run_end: { altitude: number; duration: number };
+  level_start: { level: 'kitchen' | 'dessert'; altitude: number };
+  win: { altitude: number; duration: number };
   pickup: { x: number; y: number; total: number };
 }
 
