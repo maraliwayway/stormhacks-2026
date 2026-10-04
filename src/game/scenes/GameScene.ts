@@ -295,7 +295,11 @@ export class GameScene extends Phaser.Scene {
         "Tap Space to flap   •   Tap left / right to change lane",
       );
     } else {
-      this.hint.setText("Small flaps to rise   •   A small lean changes lane");
+      this.hint.setText(
+        input.steeringMode === "head" && input.headPosition == null
+          ? "Small flaps to rise   •   Keep your head in view to turn"
+          : "Small flaps to rise   •   Head left / right to turn; center to stay",
+      );
     }
   }
 

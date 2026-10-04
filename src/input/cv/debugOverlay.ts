@@ -1,5 +1,6 @@
 import { PoseLandmarker } from "@mediapipe/tasks-vision";
 import { getLatest } from "./poseTracker";
+import { previewBounds } from "./previewBounds";
 
 /**
  * Canvas overlay: skeleton, FPS, inference time and pose latency. Toggle with `D`.
@@ -10,6 +11,7 @@ export function createDebugOverlay(
   host: HTMLElement,
   width = 640,
   height = 480,
+  video?: HTMLVideoElement,
 ) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -31,6 +33,7 @@ export function createDebugOverlay(
 
     const snapshot = getLatest();
     const landmarks = snapshot.landmarks;
+    const frame = previewBounds(video, width, height);
 
     if (landmarks) {
       context.strokeStyle = "#00e5ff";
@@ -39,14 +42,26 @@ export function createDebugOverlay(
         const startPoint = landmarks[start];
         const endPoint = landmarks[end];
         context.beginPath();
-        context.moveTo((1 - startPoint.x) * width, startPoint.y * height);
-        context.lineTo((1 - endPoint.x) * width, endPoint.y * height);
+        context.moveTo(
+          frame.x + (1 - startPoint.x) * frame.width,
+          frame.y + startPoint.y * frame.height,
+        );
+        context.lineTo(
+          frame.x + (1 - endPoint.x) * frame.width,
+          frame.y + endPoint.y * frame.height,
+        );
         context.stroke();
       }
       context.fillStyle = "#ff4081";
       for (const point of landmarks) {
         context.beginPath();
-        context.arc((1 - point.x) * width, point.y * height, 4, 0, Math.PI * 2);
+        context.arc(
+          frame.x + (1 - point.x) * frame.width,
+          frame.y + point.y * frame.height,
+          4,
+          0,
+          Math.PI * 2,
+        );
         context.fill();
       }
     }

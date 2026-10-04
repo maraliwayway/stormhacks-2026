@@ -29,7 +29,7 @@ npm run test:browser
 npm run test:camera
 ```
 
-The browser test starts its own local server and checks prayer-only camera menus, release before another selection, sensitive steering with an obscured wrist, start, flight, restart, tracking pause, and responsive sizing. The camera test loads the real local pose model in its worker, processes generated video, checks that the interface keeps updating, and verifies camera shutdown. It does not assess tracking accuracy on a person. It saves screenshots under `test-results`. Enable worms through `.env.local` to exercise the optional pickup check too.
+The browser test starts its own local server and checks prayer-only camera menus, release before another selection, head steering, an inert centre zone, and steering with an obscured wrist, start, flight, restart, tracking pause, and responsive sizing. The camera test loads the real local pose model in its worker, processes generated video, checks that the interface keeps updating, and verifies camera shutdown. It does not assess tracking accuracy on a person. It saves screenshots under `test-results`. Enable worms through `.env.local` to exercise the optional pickup check too.
 
 ## Team integration
 
@@ -45,7 +45,9 @@ Dev 3 can register `setScoreSink` from `src/net/scoreSync.ts` to send finished r
 
 Dev 1 can call `setDifficulty` in `src/game/difficulty.ts` with `enemyEveryMetres`, `enemySpeed`, and weights for `static`, `sweeper`, and `diver`. The first cat waits at least five seconds of active gameplay after the first flap, and this grace period restarts on every retry. Tracking loss pauses the timer. Cat frequency also increases with total run altitude, including across map loops. With default settings, encounter spacing ramps from 24 to 12 metres and the cooldown between warning starts drops from 6 to 4 seconds over the first 600 metres, then stays capped. Both the distance and cooldown must pass before another cat appears. The legacy speed/mix fields remain accepted for producer compatibility, but do not affect the cat: its warning always lasts 2.5 seconds at every altitude. The face marks and locks the bird's current lane, then disappears as a paw strikes that lane for 350 ms. Leave the marked lane to survive; climbing alone does not evade the strike. Tracking loss freezes the encounter. Heaven remains free of cats and obstacles.
 
-Camera controls respond to small movements. A small lean, shoulder tilt, or sideways step selects one adjacent lane. Return upright before leaning again in the same direction. A directional hand swipe remains available during play. Holding a lean does not repeat the move. Lane changes take about 170 ms. Keyboard arrows keep the same one-press, one-lane behaviour.
+Camera turning uses your head position in the mirrored preview. Move your head into the LEFT or RIGHT zone to select one adjacent lane. Return to STAY to reset for another turn in the same direction. Returning to the centre keeps your current lane, and holding a side does not repeat. The outer 35% of each side triggers a turn, with a smaller central release zone to prevent boundary jitter. Head position is independent of the calibrated shoulder and hip positions. Shoulder tilt, hip movement, and hand swipes do not turn the camera player. Lane changes take about 170 ms. Keyboard arrows keep the same one-press, one-lane behaviour.
+
+Head turns increment `turnLeftCount` or `turnRightCount`, so a brief side entry survives between render frames. `steeringMode: "head"` restricts turning to those counters. New runs baseline the counters, and a temporarily obscured face does not rearm a held turn. Visible paired eyes or ears can supply the head centre when the nose is obscured. If the whole face is untracked, turning pauses while visible shoulders and wrists can still support flapping.
 
 Flaps use a small upward movement followed by a paired downward movement at any arm height. Each direction needs only 0.08 shoulder widths of travel. Hands do not need to cross shoulder height. Wrist motion is measured relative to the torso so body bobbing does not count as a flap.
 
@@ -53,7 +55,7 @@ Calibration needs about two seconds with your shoulders in view. Hips and feet m
 
 Pose inference runs in a Web Worker with GPU acceleration and CPU fallback. The camera requests up to 60 fps. At most one frame is captured or processed at a time, so busy frames are skipped instead of accumulating delay. The 600 ms freshness limit allows slower laptops to deliver usable results. Gesture smoothing and confidence thresholds favour small movements. No visible shoulders or a stopped camera pauses the controls. Press D or use `/cv-test.html` to inspect camera timing and gesture counts.
 
-For a camera playtest: calibrate with your upper body in view, bring your palms together once to select, hold them together to check that the next screen stays put, then separate and clap again. During play, try tiny leans and short flaps below shoulder height. An obscured wrist should not stop steering. Leaving the camera view should pause the game. Automated tests cover these cases with generated poses and video; they do not establish accuracy for a person on the demo laptop.
+For a camera playtest: calibrate with your upper body in view, bring your palms together once to select, hold them together to check that the next screen stays put, then separate and clap again. During play, move your head into LEFT, return to STAY, then enter RIGHT. Check that returning to STAY keeps the current lane and holding a side changes only one lane. Try short flaps below shoulder height. An obscured wrist should not stop steering. Leaving the camera view should pause the game. Automated tests cover these cases with generated poses and video; they do not establish accuracy for a person on the demo laptop.
 
 Each flap adds a 700 px/s upward impulse, with upward speed capped at 1000 px/s. One flap from rest lifts roughly 7.7 metres. Faster flapping travels farther, while the bird falls at no more than 150 px/s. Horizontal movement stops at the selected lane.
 
@@ -89,7 +91,7 @@ Run `npm run lint:fix` before reviewing a change. `npm run lint` checks formatti
 | `src/game/hazards.ts`, `enemies.ts`, `difficulty.ts` | Safe obstacle generation, cat encounters, and pacing |
 | `src/input/cv/poseTracker.ts`, `poseWorker.ts` | Camera lifecycle, frame freshness, and background pose inference |
 | `src/input/cv/gestureDetector.ts` | Pose smoothing and gesture coordination |
-| `src/input/cv/flapDetector.ts`, `swipeDetector.ts`, `bodyGestureDetector.ts` | Independent gesture recognition |
+| `src/input/cv/flapDetector.ts`, `prayerDetector.ts`, `headSteering.ts`, `bodyGestureDetector.ts` | Independent gesture recognition |
 | `src/input/cv/gestureConfig.ts`, `gestureTypes.ts` | Gesture tuning, calibration, and typed pose/state contracts |
 
 Keep `InputState`, the gesture factory exports, game event payloads, and the difficulty/score integration contracts compatible with other developers' code. Hazard advancement takes named options such as `{ birdY, suppressObstacles }` so the caller's intent is visible. A cleanup should preserve seeded obstacle order, gesture counts across tracking loss, collision timing, and map-loop progress. Run the browser smoke test for changes to those paths; it can exercise optional pickups with `VITE_ENABLE_WORMS=true npm run test:browser`.

@@ -65,6 +65,7 @@ try {
     window.motionFrames = ({
       together = false,
       lean = 0,
+      headX = 0.5,
       hiddenWrist = false,
       sweepX = null,
       frames = 6,
@@ -75,6 +76,9 @@ try {
           y: 0.6,
           visibility: 1,
         }));
+        for (const index of [L.NOSE, L.EYE_L, L.EYE_R, L.EAR_L, L.EAR_R]) {
+          points[index] = { x: headX, y: 0.2, visibility: 1 };
+        }
         points[L.SHOULDER_L] = {
           x: 0.375 + lean,
           y: cal.shoulderY,
@@ -126,7 +130,59 @@ try {
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Boot").stage === "controls",
   );
-  await page.screenshot({ path: "test-results/prayer-controls.png" });
+  const preview = await page.evaluate(async () => {
+    const { mountCameraPanel } = await import("/src/input/cv/cameraPanel.ts");
+    const { previewBounds } = await import("/src/input/cv/previewBounds.ts");
+    const surface = document.createElement("canvas");
+    surface.width = 1280;
+    surface.height = 720;
+    const context = surface.getContext("2d");
+    context.fillStyle = "#295351";
+    context.fillRect(0, 0, surface.width, surface.height);
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    window.motionStream = surface.captureStream(30);
+    video.srcObject = window.motionStream;
+    await video.play();
+    window.motionPanel = mountCameraPanel(
+      {
+        getState: () => window.motionInput,
+        getCalibration: () => ({ phase: "done", progress: 1 }),
+        getPrompt: () => null,
+      },
+      video,
+      document.getElementById("game"),
+    );
+    const scene = window.testGame.scene.getScene("Boot");
+    return {
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      objectFit: video.style.objectFit,
+      bounds: previewBounds(video, 640, 480),
+      titleBottom: scene.title.getBounds().bottom,
+      copyTop: scene.copy.getBounds().top,
+      copyBottom: scene.copy.getBounds().bottom,
+      buttonTop: scene.button.getBounds().top,
+      lastLineRight:
+        scene.copy.x +
+        scene.copy.context.measureText(scene.copy.text.split("\n").at(-1))
+          .width /
+          2,
+    };
+  });
+  assert.equal(preview.videoWidth, 1280);
+  assert.equal(preview.videoHeight, 720);
+  assert.equal(preview.objectFit, "contain");
+  assert.deepEqual(preview.bounds, { x: 0, y: 60, width: 640, height: 360 });
+  assert.ok(preview.titleBottom < preview.copyTop);
+  assert.ok(preview.copyBottom < preview.buttonTop);
+  assert.ok(
+    preview.lastLineRight < 856,
+    "camera clears the last controls line",
+  );
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: "test-results/head-controls.png" });
   await page.evaluate(() => {
     window.motionFrames({ together: true, frames: 40 });
     window.motionInput.flapCount++;
@@ -152,6 +208,15 @@ try {
     window.motionFrames({ lean: 0.015, hiddenWrist: true });
   });
   assert.equal(await page.evaluate(() => window.motionInput.tracking), true);
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
+    640,
+    "shoulder motion cannot turn while the head stays centered",
+  );
+  await page.evaluate(() => {
+    window.motionFrames({ headX: 0.7, hiddenWrist: true });
+  });
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Game").flight.x === 340,
   );
@@ -159,13 +224,31 @@ try {
   assert.equal(
     await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
     340,
-    "a held tiny lean changes only one lane",
+    "a held head position changes only one lane",
   );
+  await page.screenshot({ path: "test-results/head-left.png" });
   await page.evaluate(() => {
-    window.motionFrames({ lean: -0.015, hiddenWrist: true });
+    window.motionFrames({ hiddenWrist: true });
+  });
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.testGame.scene.getScene("Game").flight.x),
+    340,
+    "centering the head keeps the current lane",
+  );
+  await page.screenshot({ path: "test-results/head-center.png" });
+  await page.evaluate(() => {
+    window.motionFrames({ headX: 0.3, hiddenWrist: true });
   });
   await page.waitForFunction(
     () => window.testGame.scene.getScene("Game").flight.x === 640,
+  );
+  await page.evaluate(() => {
+    window.motionFrames();
+    window.motionFrames({ headX: 0.3 });
+  });
+  await page.waitForFunction(
+    () => window.testGame.scene.getScene("Game").flight.x === 940,
   );
   await page.evaluate(() => {
     window.testGame.scene.getScene("Game").showGameOver();
@@ -184,6 +267,10 @@ try {
   });
   await page.waitForFunction(() => window.testGame.scene.isActive("Boot"));
   await page.evaluate(async () => {
+    window.motionPanel.destroy();
+    for (const track of window.motionStream.getTracks()) {
+      track.stop();
+    }
     const { keyboard } = await import("/src/input/defaultInput.ts");
     window.testManager.setSource(keyboard);
     window.testGame.scene.stop("Game");
@@ -647,7 +734,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: prayer-only menus, release before repeat, swipes and jumps rejected, tiny lean lanes despite wrist occlusion, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
+    "Browser checks passed: prayer-only menus, release before repeat, swipes and jumps rejected, head zones despite wrist occlusion, inert centre, release before another turn, canvas fit, keyboard start, fall, flap restart, CV input, ascent, lane change, tracking pause, resize, Kitchen, Dessert, Heaven, repeated loops, continuous score, resumed obstacles, death-only run end, held jump protection, cat warning, locked lane, tracking pause, dodge, paw collision, CV debug page, no runtime errors.",
   );
 } finally {
   await browser?.close();

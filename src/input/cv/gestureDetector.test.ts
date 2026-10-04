@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-import { FLIGHT, Flight } from "../../game/flight";
-import { EMPTY_INPUT } from "../types";
+import { FLIGHT } from "../../game/flight";
 import {
   DEFAULT_CALIBRATION as C,
   createGestureDetector,
@@ -82,47 +81,6 @@ const flap = (
 };
 
 const tests: Record<string, () => void> = {
-  "small torso tilts with planted hips move one lane per tilt"() {
-    const { d, t } = fresh();
-    const flight = new Flight();
-    const tilt = (offset: number, frames = 30) => {
-      for (let i = 0; i < frames; i++) {
-        const lm = pose();
-        lm[L.SHOULDER_L].x += offset;
-        lm[L.SHOULDER_R].x += offset;
-        t.now += FRAME;
-        const g = d.update(lm, t.now, C);
-        flight.update({ ...EMPTY_INPUT, ...g, calibrated: true }, FRAME / 1000);
-      }
-    };
-    tilt(C.shoulderWidth * 0.2);
-    assert.equal(
-      flight.x,
-      FLIGHT.lanes[0],
-      "a small left tilt shifts one lane",
-    );
-    tilt(C.shoulderWidth * 0.2, 90);
-    assert.equal(
-      flight.x,
-      FLIGHT.lanes[0],
-      "holding the tilt does not keep shifting",
-    );
-    tilt(0);
-    assert.equal(
-      flight.x,
-      FLIGHT.lanes[0],
-      "returning upright keeps the selected lane",
-    );
-    tilt(-C.shoulderWidth * 0.2);
-    assert.equal(
-      flight.x,
-      FLIGHT.lanes[1],
-      "the next right tilt shifts one lane right",
-    );
-    tilt(0);
-    tilt(-C.shoulderWidth * 0.2);
-    assert.equal(flight.x, FLIGHT.lanes[2]);
-  },
   "calibrated resting torso tilt and small shoulder jitter do not steer"() {
     const d = createGestureDetector();
     const cal = { ...C, shoulderX: C.hipX + 0.05 };
@@ -174,16 +132,6 @@ const tests: Record<string, () => void> = {
       const s = run(d, t, { wristY: upY }, { wristY: downY }, 125);
       assert.equal(s.flapCount, i + 1);
     }
-  },
-  "a lean reaches useful steering within 100 ms and reverses promptly"() {
-    const { d, t } = fresh();
-    const offset = C.shoulderWidth * 0.45;
-    t.now += FRAME;
-    let s = run(d, t, { hipX: C.hipX - offset }, { hipX: C.hipX - offset }, 99);
-    assert.ok(s.strafe > 0.8, `steering after 99 ms: ${s.strafe}`);
-    t.now += FRAME;
-    s = run(d, t, { hipX: C.hipX + offset }, { hipX: C.hipX + offset }, 99);
-    assert.ok(s.strafe < -0.8, `reversed steering after 99 ms: ${s.strafe}`);
   },
   "small shoulder-line jitter neither steers nor creates flaps"() {
     const { d, t } = fresh();
@@ -237,54 +185,6 @@ const tests: Record<string, () => void> = {
     s = run(d, t, {}, {}, 4000);
     assert.equal(s.flapRate, 0, "rate decays when player stops");
     assert.equal(s.flapCount, 3, "flapCount never decreases");
-  },
-  "strafe left = hips to larger image x, with hysteresis"() {
-    const { d, t } = fresh();
-    const edge = C.shoulderWidth * 0.35;
-    let s = run(d, t, {}, { hipX: C.hipX + edge * 1.3 }, 300);
-    assert.equal(s.strafeLeft, true);
-    assert.equal(s.strafeRight, false);
-    s = run(
-      d,
-      t,
-      { hipX: C.hipX + edge * 1.3 },
-      { hipX: C.hipX + edge * 0.8 },
-      300,
-    ); // inside enter, outside exit
-    assert.equal(s.strafeLeft, true, "hysteresis keeps it on");
-    s = run(d, t, { hipX: C.hipX + edge * 0.8 }, {}, 400);
-    assert.equal(s.strafeLeft, false);
-  },
-  "analog strafe is proportional, signed, and has a deadzone"() {
-    const { d, t } = fresh();
-    const sw = C.shoulderWidth;
-    let s = run(d, t, {}, { hipX: C.hipX - sw * 0.015 }, 600);
-    assert.equal(s.strafe, 0, "inside deadzone");
-    s = run(
-      d,
-      t,
-      { hipX: C.hipX - sw * 0.015 },
-      { hipX: C.hipX - sw * 0.06 },
-      600,
-    );
-    assert.ok(s.strafe > 0.3 && s.strafe < 0.8, `slight right ${s.strafe}`);
-    assert.equal(s.strafeRight, false, "boolean not on yet");
-    s = run(
-      d,
-      t,
-      { hipX: C.hipX - sw * 0.06 },
-      { hipX: C.hipX - sw * 0.8 },
-      600,
-    );
-    assert.equal(s.strafe, 1);
-    s = run(
-      d,
-      t,
-      { hipX: C.hipX - sw * 0.8 },
-      { hipX: C.hipX + sw * 0.8 },
-      900,
-    );
-    assert.equal(s.strafe, -1, "left is negative");
   },
   "one horizontal swipe with either hand counts once in its preview direction"() {
     for (const side of [L.WRIST_L, L.WRIST_R]) {
@@ -344,12 +244,6 @@ const tests: Record<string, () => void> = {
     lm[L.WRIST_R] = { x: 0.35, y: C.shoulderY };
     t.now += FRAME;
     assert.equal(d.update(lm, t.now, C).swipeRightCount, 0);
-  },
-  "strafe right"() {
-    const { d, t } = fresh();
-    const s = run(d, t, {}, { hipX: C.hipX - C.shoulderWidth * 0.5 }, 300);
-    assert.equal(s.strafeRight, true);
-    assert.equal(s.strafeLeft, false);
   },
   "jump needs height AND upward speed"() {
     const a = fresh();

@@ -70,6 +70,7 @@ describe("camera input integration", () => {
     }
     expect(input.getState().calibrated).toBe(true);
     expect(input.getState().menuConfirmMode).toBe("clap");
+    expect(input.getState().steeringMode).toBe("head");
     const confirm = new MenuConfirm(input.getState());
     for (const direction of [-1, 1]) {
       for (let frame = 0; frame < 12; frame++) {
@@ -88,6 +89,18 @@ describe("camera input integration", () => {
     }
     expect(input.getState().swipeLeftCount).toBe(1);
     expect(input.getState().swipeRightCount).toBe(1);
+    expect(input.getState().turnLeftCount).toBe(0);
+    expect(input.getState().turnRightCount).toBe(0);
+    for (let frame = 0; frame < 6; frame++) {
+      const points = standingPose();
+      for (const index of [L.NOSE, L.EYE_L, L.EYE_R, L.EAR_L, L.EAR_R]) {
+        points[index].x = 0.7;
+      }
+      feed(points);
+    }
+    expect(input.getState().strafe).toBe(-1);
+    expect(input.getState().turnLeftCount).toBe(1);
+    expect(confirm.read(input.getState())).toBe(false);
     for (let frame = 0; frame < 6; frame++) {
       const points = standingPose();
       points[L.WRIST_L] = { ...points[0], x: 0.49, y: 0.43 };

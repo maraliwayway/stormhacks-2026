@@ -12,7 +12,7 @@ export const FLIGHT = {
   maxRise: 1000,
   pixelsPerMetre: 40,
   lanes: [340, 640, 940],
-  // One small tilt selects one adjacent lane. A 300 px move takes about 170 ms.
+  // One turn selects one adjacent lane. A 300 px move takes about 170 ms.
   laneSpeed: 1800,
   laneEnter: 0.2,
   laneExit: 0.08,
@@ -43,11 +43,15 @@ export class Flight {
   private lastFlapCount: number;
   private lastSwipeLeftCount = 0;
   private lastSwipeRightCount = 0;
+  private lastTurnLeftCount = 0;
+  private lastTurnRightCount = 0;
 
   constructor(initialFlapCount = 0, initialInput?: Readonly<InputState>) {
     this.lastFlapCount = initialFlapCount;
     this.lastSwipeLeftCount = initialInput?.swipeLeftCount ?? 0;
     this.lastSwipeRightCount = initialInput?.swipeRightCount ?? 0;
+    this.lastTurnLeftCount = initialInput?.turnLeftCount ?? 0;
+    this.lastTurnRightCount = initialInput?.turnRightCount ?? 0;
   }
 
   update(input: Readonly<InputState>, elapsedSeconds: number): number {
@@ -58,6 +62,7 @@ export class Flight {
         : 0;
     this.lastFlapCount = input.flapCount;
     const swipeDirection = this.consumeSwipe(input);
+    const turnDirection = this.consumeHeadTurn(input);
     if (!input.tracking || !input.calibrated) {
       return 0;
     }
@@ -65,7 +70,7 @@ export class Flight {
       -FLIGHT.maxRise,
       this.velocity - flaps * FLIGHT.impulse,
     );
-    this.updateStrafe(input, elapsedSeconds, swipeDirection);
+    this.updateStrafe(input, elapsedSeconds, swipeDirection, turnDirection);
     const nextVelocity = Math.min(
       FLIGHT.maxFall,
       this.velocity + FLIGHT.gravity * elapsedSeconds,
@@ -99,10 +104,24 @@ export class Flight {
     return 0;
   }
 
+  private consumeHeadTurn(input: Readonly<InputState>): number {
+    const leftCount = input.turnLeftCount ?? 0;
+    const rightCount = input.turnRightCount ?? 0;
+    const movedLeft = leftCount > this.lastTurnLeftCount;
+    const movedRight = rightCount > this.lastTurnRightCount;
+    this.lastTurnLeftCount = leftCount;
+    this.lastTurnRightCount = rightCount;
+    if (movedLeft && movedRight) {
+      return input.lastTurnDirection ?? 0;
+    }
+    return movedLeft ? -1 : movedRight ? 1 : 0;
+  }
+
   private updateStrafe(
     input: Readonly<InputState>,
     elapsedSeconds: number,
     swipeDirection: number,
+    turnDirection: number,
   ): void {
     const strafe = input.strafe;
     const magnitude = Math.abs(strafe);
@@ -112,8 +131,10 @@ export class Flight {
     } else if (magnitude <= FLIGHT.laneExit) {
       direction = 0;
     }
-    let laneStep = swipeDirection;
+    let laneStep =
+      input.steeringMode === "head" ? turnDirection : swipeDirection;
     if (
+      input.steeringMode !== "head" &&
       laneStep === 0 &&
       !input.swipeInProgress &&
       direction !== 0 &&

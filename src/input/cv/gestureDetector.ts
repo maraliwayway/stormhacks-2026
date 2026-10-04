@@ -9,6 +9,7 @@ import {
   type HandSide,
   type Point,
 } from "./gestureTypes";
+import { HeadSteering } from "./headSteering";
 import { L, isVisiblePoint } from "./landmarks";
 import { OneEuroFilter } from "./oneEuro";
 import { PrayerDetector } from "./prayerDetector";
@@ -38,9 +39,6 @@ export function createGestureDetector(): GestureDetector {
   const bodyFilters = {
     shoulderX: createBodyFilter(),
     shoulderY: createBodyFilter(),
-    shoulderLeftY: createBodyFilter(),
-    shoulderRightY: createBodyFilter(),
-    hipX: createBodyFilter(),
     hipY: createBodyFilter(),
   };
   const wristFilters = {
@@ -51,6 +49,7 @@ export function createGestureDetector(): GestureDetector {
   const swipes = new SwipeDetector();
   const prayer = new PrayerDetector();
   const body = new BodyGestureDetector();
+  const head = new HeadSteering();
   let previousTimestampMs: number | null = null;
   let tracking = false;
 
@@ -66,6 +65,7 @@ export function createGestureDetector(): GestureDetector {
     swipes.reset();
     prayer.reset();
     body.reset();
+    head.reset();
     previousTimestampMs = null;
     tracking = false;
   }
@@ -83,26 +83,11 @@ export function createGestureDetector(): GestureDetector {
       isVisiblePoint(landmarks[index], THRESHOLDS.minHipConfidence),
     );
     if (!hipsVisible) {
-      bodyFilters.hipX.reset();
       bodyFilters.hipY.reset();
     }
     const pose: FilteredPose = {
       shoulderX: bodyFilters.shoulderX.filter(rawShoulderX, timestampMs),
       shoulderY: bodyFilters.shoulderY.filter(rawShoulderY, timestampMs),
-      shoulderLeftY: bodyFilters.shoulderLeftY.filter(
-        landmarks[L.SHOULDER_L].y,
-        timestampMs,
-      ),
-      shoulderRightY: bodyFilters.shoulderRightY.filter(
-        landmarks[L.SHOULDER_R].y,
-        timestampMs,
-      ),
-      hipX: hipsVisible
-        ? bodyFilters.hipX.filter(
-            (landmarks[L.HIP_L].x + landmarks[L.HIP_R].x) / 2,
-            timestampMs,
-          )
-        : calibration.hipX,
       hipY: hipsVisible
         ? bodyFilters.hipY.filter(
             (landmarks[L.HIP_L].y + landmarks[L.HIP_R].y) / 2,
@@ -153,6 +138,8 @@ export function createGestureDetector(): GestureDetector {
       lastSwipeDirection: swipes.lastDirection,
       swipeInProgress: swipes.inProgress,
       ...body.getState(),
+      steeringMode: "head",
+      ...head.getState(),
     };
   }
 
@@ -196,6 +183,7 @@ export function createGestureDetector(): GestureDetector {
     }
     prayer.update(pose, calibration.shoulderWidth, timestampMs);
     body.update(pose, calibration, elapsedSeconds, timestampMs);
+    head.update(landmarks, timestampMs);
     previousTimestampMs = timestampMs;
     tracking = true;
     return snapshot(timestampMs);

@@ -32,10 +32,15 @@ export interface GestureState {
   swipeRightCount: number;
   lastSwipeDirection: -1 | 0 | 1;
   swipeInProgress: boolean;
-  /** Analog strafe: -1 (fully left) .. 0 (centre) .. +1 (fully right), proportional to how far you lean/step. */
+  steeringMode: "head";
+  /** Mirrored camera zone: -1 (left), 0 (centre/untracked), +1 (right). */
   strafe: number;
   strafeLeft: boolean;
   strafeRight: boolean;
+  headPosition: number | null;
+  turnLeftCount: number;
+  turnRightCount: number;
+  lastTurnDirection: -1 | 0 | 1;
   jump: boolean;
   squat: boolean;
 }
@@ -44,9 +49,6 @@ export interface GestureState {
 export interface FilteredPose {
   shoulderX: number;
   shoulderY: number;
-  shoulderLeftY: number;
-  shoulderRightY: number;
-  hipX: number;
   hipY: number;
   wristX: Record<HandSide, number>;
   wristY: Record<HandSide, number>;

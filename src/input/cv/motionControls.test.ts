@@ -98,7 +98,7 @@ describe("camera motion regressions", () => {
     }
   });
 
-  it("responds to shoulder tilt with planted hips and removes calibrated resting tilt", () => {
+  it("does not steer from shoulder tilt while the head is centered", () => {
     const detector = createGestureDetector();
     for (const direction of [-1, 1]) {
       let state = detector.update(pose(0.6, 0.6), 1000);
@@ -112,8 +112,8 @@ describe("camera motion regressions", () => {
           2000 + (direction + 1) * 500 + frame * 33,
         );
       }
-      expect(Math.sign(state.strafe)).toBe(-direction);
-      expect(Math.abs(state.strafe)).toBeGreaterThan(0.2);
+      expect(state.strafe).toBe(0);
+      expect(state.turnLeftCount + state.turnRightCount).toBe(0);
     }
     const resting = pose(0.6, 0.6);
     resting[L.SHOULDER_L].y += 0.025;

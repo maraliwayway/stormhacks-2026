@@ -26,16 +26,16 @@ export interface InputState {
 
   /**
    * Analog strafe, -1 (fully left) .. 0 (centre) .. +1 (fully right).
-   * Proportional to torso tilt or hip displacement from calibrated centre, with a small
-   * deadzone. Gameplay uses a fresh tilt to select one adjacent lane.
+   * Camera: the head's side zone in the mirrored preview. The centre is inert.
+   * Head steering uses turn counters to preserve short movements between render frames.
    * Keyboard: -1 / 0 / +1.
    */
   strafe: number;
 
-  /** Boolean strafeLeft/Right are for menus (discrete navigation). True while hip midpoint is left of calibrated center. */
+  /** True while the camera head is in the left zone, or the left key is held. */
   strafeLeft: boolean;
 
-  /** True while hip midpoint is right of calibrated center. */
+  /** True while the camera head is in the right zone, or the right key is held. */
   strafeRight: boolean;
 
   /** True while in the jump pose. */
@@ -61,6 +61,13 @@ export interface InputState {
   lastSwipeDirection?: -1 | 0 | 1;
   /** Suppress tilt-induced lane changes while a hand is making a deliberate swipe. */
   swipeInProgress?: boolean;
+  /** Head producers turn only through these counters; other producers keep legacy controls. */
+  steeringMode?: "head";
+  /** Horizontal head position (0..1) in the mirrored preview, null while untracked. */
+  headPosition?: number | null;
+  turnLeftCount?: number;
+  turnRightCount?: number;
+  lastTurnDirection?: -1 | 0 | 1;
 }
 
 export interface InputSource {

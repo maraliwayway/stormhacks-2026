@@ -18,10 +18,6 @@ export const THRESHOLDS = {
   flapPairMs: 350,
   flapActiveMs: 500, // `flapping` stays true this long after a flap
   rateWindowMs: 3000,
-  strafeDeadzone: 0.02,
-  strafeFull: 0.12,
-  strafeEnter: 0.35, // boolean strafeLeft/Right (menus) turn on here
-  strafeExit: 0.2, // hysteresis: must come back this close to centre to release
   jumpEnter: 0.25,
   jumpExit: 0.12,
   jumpMinUpSpeed: 0.5, // shoulder widths / s upward at the moment of entering

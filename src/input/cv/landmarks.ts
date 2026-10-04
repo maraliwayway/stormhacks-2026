@@ -1,6 +1,11 @@
 import type { Point } from "./gestureTypes";
 
 export const L = {
+  NOSE: 0,
+  EYE_L: 2,
+  EYE_R: 5,
+  EAR_L: 7,
+  EAR_R: 8,
   SHOULDER_L: 11,
   SHOULDER_R: 12,
   WRIST_L: 15,

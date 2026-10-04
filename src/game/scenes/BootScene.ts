@@ -69,8 +69,8 @@ export class BootScene extends Phaser.Scene {
     this.button.setY(530);
     this.copy.setText(
       this.cameraMode()
-        ? "Small flaps with both arms make you rise.\nLean a little left or right to change one lane.\nReturn upright before another tilt.\n\nMenus: palms together to select.\nSeparate hands before each clap."
-        : "Flap both arms to rise.\nTilt to shift one lane, then return upright.\nJump to confirm. Squat is the down pose.\n\nKeyboard: Space to flap, tap left/right to shift lanes.",
+        ? "Small flaps with both arms make you rise.\nMove your head into LEFT or RIGHT to turn.\nReturn to STAY to reset, keeping your lane.\n\nMenus: palms together to select.\nSeparate hands to reset."
+        : "Tap Space to flap and rise.\nTap left or right to change one lane.\nYour lane stays put when you release.\n\nMenus: press Enter to select.",
     );
     this.button.setText(this.buttonText("GOT IT!"));
   }

@@ -5,6 +5,32 @@ import { FLIGHT, Flight } from "./flight";
 const active = () => ({ ...EMPTY_INPUT, tracking: true, calibrated: true });
 
 describe("flight physics", () => {
+  it("head steering ignores swipes and turns even while arms are moving", () => {
+    const flight = new Flight();
+    const input = {
+      ...active(),
+      steeringMode: "head" as const,
+      strafe: -1,
+      swipeLeftCount: 1,
+      swipeInProgress: true,
+      turnLeftCount: 0,
+      turnRightCount: 0,
+    };
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[1]);
+    input.turnLeftCount++;
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+    input.strafe = 0;
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+    input.turnRightCount++;
+    input.tracking = false;
+    flight.update(input, 0.2);
+    input.tracking = true;
+    flight.update(input, 0.2);
+    expect(flight.x).toBe(FLIGHT.lanes[0]);
+  });
   it("directional swipes move one lane without repeats or replaying the menu swipe", () => {
     const input = { ...active(), swipeLeftCount: 0, swipeRightCount: 2 };
     const flight = new Flight(0, input);

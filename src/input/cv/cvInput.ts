@@ -26,7 +26,15 @@ export interface CvInput extends InputSource {
  * so the game can pause / show the calibrate screen whenever it goes false.
  */
 export function createCvInput(video: HTMLVideoElement): CvInput {
-  const state: InputState = { ...EMPTY_INPUT, menuConfirmMode: "clap" };
+  const state: InputState = {
+    ...EMPTY_INPUT,
+    menuConfirmMode: "clap",
+    steeringMode: "head",
+    headPosition: null,
+    turnLeftCount: 0,
+    turnRightCount: 0,
+    lastTurnDirection: 0,
+  };
   const calibrator = createCalibrator();
   const lostBodyMonitor = createLostBodyMonitor();
   const detector = createGestureDetector();
@@ -95,6 +103,10 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
         state.strafe = gestures.strafe;
         state.strafeLeft = gestures.strafeLeft;
         state.strafeRight = gestures.strafeRight;
+        state.headPosition = gestures.headPosition;
+        state.turnLeftCount = gestures.turnLeftCount;
+        state.turnRightCount = gestures.turnRightCount;
+        state.lastTurnDirection = gestures.lastTurnDirection;
         state.jump = gestures.jump;
         state.squat = gestures.squat;
         state.calibrated = calibrationStatus.phase === "done";
@@ -110,6 +122,7 @@ export function createCvInput(video: HTMLVideoElement): CvInput {
       stopTracker();
       detector.reset();
       Object.assign(state, EMPTY_INPUT);
+      state.headPosition = null;
       calibrationStatus = null;
       prompt = null;
     },

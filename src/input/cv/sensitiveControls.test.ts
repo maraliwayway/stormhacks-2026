@@ -21,13 +21,14 @@ function pose() {
 }
 
 describe("sensitive camera controls", () => {
-  it("keeps steering when a wrist is obscured and responds to a tiny lean", () => {
+  it("keeps head steering when a wrist is obscured", () => {
     const detector = createGestureDetector();
     const flight = new Flight();
     for (let frame = 0; frame < 12; frame++) {
       const points = pose();
-      points[L.SHOULDER_L].x += 0.015;
-      points[L.SHOULDER_R].x += 0.015;
+      for (const index of [L.NOSE, L.EYE_L, L.EYE_R, L.EAR_L, L.EAR_R]) {
+        points[index].x = 0.7;
+      }
       points[L.WRIST_L].visibility = 0.05;
       const state = detector.update(points, 1000 + frame * 33);
       expect(state.tracking).toBe(true);
